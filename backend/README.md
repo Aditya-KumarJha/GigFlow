@@ -141,7 +141,7 @@ Before you begin, ensure you have the following installed:
 
 1. **Clone the repository**
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/Aditya-KumarJha/GigFlow.git
    cd GigFlow/backend
    ```
 
@@ -515,21 +515,6 @@ Authorization: Bearer <token>
 - Type validation for images
 - Secure storage with ImageKit
 
-## 🧪 Testing
-
-```bash
-npm test
-```
-*Note: Test scripts need to be configured*
-
-## 🐛 Debugging
-
-Enable detailed logging:
-```env
-NODE_ENV=development
-```
-
-Morgan logger will output HTTP requests in development mode.
 
 ## 📦 Deployment
 
@@ -573,8 +558,8 @@ This project is licensed under the ISC License.
 
 ## 📞 Support
 
-For support, email support@gigflow.com or open an issue in the repository.
+For support, open an issue in the repository.
 
 ---
 
-**Built with ❤️ by the GigFlow Team**
+**Built with ❤️ by Aditya Kumar Jha**
