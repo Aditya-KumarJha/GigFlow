@@ -12,6 +12,7 @@ import {
 	resetPassword,
 	logout,
 	getCurrentUser,
+	updateProfile,
 } from '../controllers/auth.controller.js';
 import {
 	registerUserValidations,
@@ -22,8 +23,10 @@ import {
 	forgotPasswordValidations,
 	verifyForgotPasswordOTPValidations,
 	resetPasswordValidations,
+	updateProfileValidations,
 } from '../validators/auth.validator.js';
 import { authMiddleware } from '../middlewares/auth.middleware.js';
+import { uploadSingle } from '../middlewares/upload.middleware.js';
 
 const router = express.Router();
 
@@ -99,5 +102,8 @@ router.post('/logout', logout);
 
 // Get Current User
 router.get('/me', authMiddleware, getCurrentUser);
+
+// Update Profile
+router.patch('/profile', authMiddleware, uploadSingle, updateProfileValidations, updateProfile);
 
 export default router;

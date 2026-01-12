@@ -3,6 +3,8 @@ import jwt from "jsonwebtoken";
 import userModel from "../models/user.model.js";
 import { generateOTP } from "../utils/generate.otp.js";
 import { publishToQueue } from "../broker/broker.js";
+import { uploadImage } from "../services/imagekit.service.js";
+import fs from "fs/promises";
 
 export const registerUser = async (req, res) => {
   try {
@@ -618,3 +620,107 @@ export const getCurrentUser = async (req, res) => {
     });
   }
 };
+
+export const updateProfile = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { username, fullName, currentPassword, newPassword } = req.body;
+
+    // Find user with password field
+    const user = await userModel.findById(userId).select('+password');
+    
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Update username if provided
+    if (username !== undefined && username !== user.username) {
+      // Check if username is already taken
+      const existingUser = await userModel.findOne({ username });
+      if (existingUser && existingUser._id.toString() !== userId.toString()) {
+        return res.status(400).json({ message: 'Username already taken' });
+      }
+      user.username = username;
+    }
+
+    // Update fullName if provided
+    if (fullName !== undefined) {
+      user.fullName = fullName;
+    }
+
+    // Update password if both current and new password provided
+    if (currentPassword && newPassword) {
+      // Only allow password update for email provider
+      if (user.provider !== 'email') {
+        return res.status(400).json({ 
+          message: 'Password cannot be changed for OAuth accounts' 
+        });
+      }
+
+      // Verify current password
+      const isPasswordValid = await bcrypt.compare(currentPassword, user.password);
+      if (!isPasswordValid) {
+        return res.status(400).json({ message: 'Current password is incorrect' });
+      }
+
+      // Validate new password
+      if (newPassword.length < 6) {
+        return res.status(400).json({ 
+          message: 'New password must be at least 6 characters long' 
+        });
+      }
+
+      // Hash and update new password
+      const hashedPassword = await bcrypt.hash(newPassword, 12);
+      user.password = hashedPassword;
+    }
+
+    // Handle profile picture upload
+    if (req.file) {
+      try {
+        let buffer = req.file.buffer;
+        if (!buffer && req.file.path) {
+          buffer = await fs.readFile(req.file.path);
+        }
+        const uploaded = await uploadImage({ buffer });
+        user.profilePic = uploaded.url;
+      } catch (err) {
+        console.error('Profile picture upload failed:', err);
+        return res.status(500).json({ message: 'Failed to upload profile picture' });
+      }
+    }
+
+    await user.save();
+
+    // Send profile updated notification
+    try {
+      await publishToQueue('AUTH_NOTIFICATION.PROFILE_UPDATED', {
+        email: user.email,
+        fullName: user.fullName,
+        username: user.username,
+      });
+    } catch (err) {
+      console.error('Failed to publish profile updated event:', err);
+    }
+
+    return res.status(200).json({
+      message: 'Profile updated successfully',
+      user: {
+        id: user._id,
+        email: user.email,
+        username: user.username,
+        fullName: user.fullName,
+        profilePic: user.profilePic,
+        provider: user.provider,
+        isVerified: user.isVerified,
+      },
+    });
+
+  } catch (error) {
+    console.error('Update profile error:', error);
+    return res.status(500).json({
+      message: 'Failed to update profile',
+    });
+  }
+};
+

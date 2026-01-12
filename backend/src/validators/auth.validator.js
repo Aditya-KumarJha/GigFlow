@@ -224,3 +224,47 @@ export const resetPasswordValidations = [
         .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
         .withMessage("Password must contain at least one uppercase letter, one lowercase letter, and one number"),
 ];
+
+export const updateProfileValidations = [
+    body("username")
+        .optional()
+        .isString()
+        .withMessage("Username must be a string")
+        .isLength({ min: 3 })
+        .withMessage("Username must be at least 3 characters long")
+        .trim(),
+    body("fullName")
+        .optional()
+        .custom((value) => {
+            if (typeof value !== 'object' || value === null) {
+                throw new Error("Full name must be an object with firstName and lastName");
+            }
+            if (value.firstName && (typeof value.firstName !== 'string' || value.firstName.trim().length === 0)) {
+                throw new Error("firstName must be a non-empty string");
+            }
+            if (value.lastName && (typeof value.lastName !== 'string' || value.lastName.trim().length === 0)) {
+                throw new Error("lastName must be a non-empty string");
+            }
+            return true;
+        }),
+    body("currentPassword")
+        .optional()
+        .isString()
+        .withMessage("Current password must be a string"),
+    body("newPassword")
+        .optional()
+        .isLength({ min: 6 })
+        .withMessage("New password must be at least 6 characters long")
+        .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
+        .withMessage("New password must contain at least one uppercase letter, one lowercase letter, and one number"),
+    (req, res, next) => {
+        // If changing password, both currentPassword and newPassword are required
+        if ((req.body.currentPassword && !req.body.newPassword) || (!req.body.currentPassword && req.body.newPassword)) {
+            return res.status(400).json({ 
+                errors: [{ msg: 'Both currentPassword and newPassword are required to change password' }] 
+            });
+        }
+        respondWithValidationErrors(req, res, next);
+    },
+];
+
