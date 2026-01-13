@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import api from "../utils/axios";
-import OtpForm from "../components/auth/OtpForm";
+import api from "../../utils/api";
+import OtpForm from "./OTPForm";
 import { Eye, EyeOff } from "lucide-react";
 
 const ForgotPassword = ({ email, setEmail, onBack }) => {
-  const [step, setStep] = useState("email"); 
+  const [step, setStep] = useState("email");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -25,7 +25,8 @@ const ForgotPassword = ({ email, setEmail, onBack }) => {
     try {
       setLoading(true);
       setError(null);
-      await api.post("/api/auth/request-password-reset", { email });
+
+      await api.post("/api/auth/forgot-password", { email });
       setStep("verify");
     } catch (err) {
       setError(err.response?.data?.message || "Failed to send OTP");
@@ -40,6 +41,16 @@ const ForgotPassword = ({ email, setEmail, onBack }) => {
       return;
     }
 
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters");
+      return;
+    }
+
+    if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password)) {
+      setError("Password must contain at least one uppercase letter, one lowercase letter, and one number");
+      return;
+    }
+
     if (password !== confirmPassword) {
       setError("Passwords do not match");
       return;
@@ -51,14 +62,12 @@ const ForgotPassword = ({ email, setEmail, onBack }) => {
 
       await api.post("/api/auth/reset-password", {
         email,
-        otp: localStorage.getItem("resetOtp"),
         newPassword: password,
       });
 
-      localStorage.removeItem("resetOtp");
       setSuccess("Your password was reset successfully");
 
-      setTimeout(() => navigate("/dashboard"), 1500);
+      setTimeout(() => navigate("/login?reset=1"), 1500);
     } catch (err) {
       setError(err.response?.data?.message || "Failed to reset password");
     } finally {
@@ -71,7 +80,7 @@ const ForgotPassword = ({ email, setEmail, onBack }) => {
   };
 
   return (
-    <div className="bg-white/80 dark:bg-black/80 backdrop-blur-md p-10 flex flex-col justify-center text-gray-900 dark:text-white rounded-r-2xl">
+    <div className="bg-white border border-zinc-200 backdrop-blur-md p-10 flex flex-col justify-center text-gray-900 rounded-2xl shadow-lg">
       <h2 className="text-2xl font-bold text-center mb-4">Forgot Password</h2>
 
       {error && (
@@ -94,7 +103,7 @@ const ForgotPassword = ({ email, setEmail, onBack }) => {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             onKeyDown={(e) => handleKeyPress(e, handleSendOtp)}
-            className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 mb-4"
+            className="w-full px-4 py-3 rounded-lg border border-zinc-200 bg-white text-gray-900 placeholder-gray-400 mb-4"
           />
 
           <button
@@ -124,7 +133,7 @@ const ForgotPassword = ({ email, setEmail, onBack }) => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               onKeyDown={(e) => handleKeyPress(e, handleResetPassword)}
-              className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600"
+              className="w-full px-4 py-3 rounded-lg border border-zinc-200 bg-white text-gray-900 placeholder-gray-400"
             />
 
             <button
@@ -136,6 +145,10 @@ const ForgotPassword = ({ email, setEmail, onBack }) => {
             </button>
           </div>
 
+          <p className="text-gray-500 text-xs mb-4">
+            Must be at least 6 characters with uppercase, lowercase, and number
+          </p>
+
           <div className="relative mb-2">
             <input
               type={showConfirmPassword ? "text" : "password"}
@@ -143,7 +156,7 @@ const ForgotPassword = ({ email, setEmail, onBack }) => {
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               onKeyDown={(e) => handleKeyPress(e, handleResetPassword)}
-              className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600"
+              className="w-full px-4 py-3 rounded-lg border border-zinc-200 bg-white text-gray-900 placeholder-gray-400"
             />
 
             <button

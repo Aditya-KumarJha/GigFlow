@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import api from "../utils/axios";
+import api from "../../utils/api";
 
 const OtpForm = ({ email, context, onVerified }) => {
   const navigate = useNavigate();
@@ -69,20 +69,29 @@ const OtpForm = ({ email, context, onVerified }) => {
       setLoading(true);
       setServerError(null);
 
-      const res = await api.post("/api/auth/verify-otp", {
+      let endpoint = "/api/auth/verify-register-otp";
+
+      if (context === "login") {
+        endpoint = "/api/auth/verify-login-otp";
+      } else if (context === "forgot") {
+        endpoint = "/api/auth/verify-forgot-password-otp";
+      }
+
+      const res = await api.post(endpoint, {
         email,
         otp: otpCode,
-        context,
       });
 
       if (context === "forgot") {
-        if (res.data.resetAllowed && onVerified) {
-          localStorage.setItem("resetOtp", otpCode);
-          onVerified(email);
+        if (onVerified) {
+          onVerified(res.data);
         }
       } else {
-        localStorage.setItem("authToken", res.data.token);
-        navigate("/dashboard");
+        if (res.data?.token) {
+          localStorage.setItem("authToken", res.data.token);
+        }
+        // After successful register or login, redirect to home
+        navigate("/");
       }
     } catch (err) {
       setServerError(err.response?.data?.message || "OTP verification failed.");
@@ -140,7 +149,12 @@ const OtpForm = ({ email, context, onVerified }) => {
     setResendMessage(null);
 
     try {
-      await api.post("/api/auth/resend-otp", { email });
+      if (context === "forgot") {
+        await api.post("/api/auth/forgot-password", { email });
+      } else {
+        await api.post("/api/auth/resend-otp", { email });
+      }
+
       setResendMessage("OTP has been resent to your email.");
       setExpiresAt(new Date(Date.now() + 10 * 60 * 1000));
       setRemainingTime(10 * 60);
@@ -159,15 +173,15 @@ const OtpForm = ({ email, context, onVerified }) => {
   };
 
   return (
-    <div className="bg-white/80 dark:bg-black/80 backdrop-blur-md p-10 flex flex-col justify-center text-gray-900 dark:text-white rounded-r-2xl">
+    <div className="bg-white border border-zinc-200 backdrop-blur-md p-10 flex flex-col justify-center text-gray-900 rounded-2xl shadow-lg">
       <h2 className="text-2xl font-bold text-center mb-4">Verify OTP</h2>
 
-      <p className="text-sm text said-center text-gray-600 dark:text-gray-300 mb-6">
+      <p className="text-sm text-center text-gray-600 mb-6">
         Enter the 6-digit OTP sent to <strong>{email}</strong>
       </p>
 
-      {remainingTime > 0 ? (
-        <p className="text-xs text-center text-gray-500 dark:text-gray-400 mb-4">
+        {remainingTime > 0 ? (
+        <p className="text-xs text-center text-gray-500 mb-4">
           OTP is valid for{" "}
           <span className="font-semibold">{formatTime(remainingTime)}</span>
         </p>
@@ -208,7 +222,7 @@ const OtpForm = ({ email, context, onVerified }) => {
               onChange={(e) => handleChange(e, i)}
               onKeyDown={(e) => handleKeyDown(e, i)}
               ref={(el) => (otpRefs.current[i] = el)}
-              className="w-14 h-14 text-center text-2xl rounded-lg border border-gray-300 dark:border-gray-600 focus:border-teal-400 focus:ring-2 focus:ring-cyan-400 bg-gray-100 dark:bg-gray-800 outline-none shadow hover:scale-105 transition active:scale-95"
+              className="w-14 h-14 text-center text-2xl rounded-lg border border-zinc-200 focus:border-teal-400 focus:ring-2 focus:ring-cyan-400 bg-white outline-none shadow hover:scale-105 transition active:scale-95"
             />
           ))}
         </div>

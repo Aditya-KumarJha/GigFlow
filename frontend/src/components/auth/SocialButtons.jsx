@@ -15,7 +15,7 @@ const SocialButtons = ({ onClick }) => {
           aria-label={`Sign up with ${p.name}`}
           onClick={() => onClick(p.name)}
           className="w-full flex items-center justify-center gap-2
-                     border border-gray-300 bg-gray-50
+                     border border-white/10 bg-white text-gray-900
                      hover:bg-linear-to-r hover:from-teal-400 hover:to-cyan-500 hover:text-white
                      transition rounded-lg py-3 active:scale-95 shadow-sm"
         >

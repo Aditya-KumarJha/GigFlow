@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import SocialButtons from "./SocialButtons";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
-import api from "../utils/axios";
+import api from "../../utils/api";
 
 const LoginForm = ({
   setOtpStep,
@@ -16,6 +16,7 @@ const LoginForm = ({
   const [errors, setErrors] = useState({ email: false, password: false });
   const [loading, setLoading] = useState(false);
   const [serverError, setServerError] = useState(null);
+  const [successMessage, setSuccessMessage] = useState(null);
 
   const navigate = useNavigate();
 
@@ -24,6 +25,12 @@ const LoginForm = ({
     if (error) {
       setServerError(error);
       searchParams.delete("error");
+      setSearchParams(searchParams, { replace: true });
+    }
+    const reset = searchParams.get("reset");
+    if (reset) {
+      setSuccessMessage("Your password has been reset. Please login with your new password.");
+      searchParams.delete("reset");
       setSearchParams(searchParams, { replace: true });
     }
   }, [searchParams, setSearchParams]);
@@ -48,12 +55,24 @@ const LoginForm = ({
       setLoading(true);
       setServerError(null);
 
-      await api.post("/api/auth/login", form);
+      await api.post("/api/auth/login", {
+        email: form.email,
+        password: form.password,
+      });
 
       setUserEmail(form.email);
       setOtpStep(true);
     } catch (err) {
-      setServerError(err.response?.data?.message || "Login failed");
+      // Handle validation errors from backend
+      if (err.response?.status === 400 && err.response?.data?.errors) {
+        const validationErrors = err.response.data.errors;
+        const errorMessages = validationErrors.map(e => e.msg).join('. ');
+        setServerError(errorMessages);
+      } else {
+        setServerError(
+          err.response?.data?.message || "Login failed. Please try again."
+        );
+      }
     } finally {
       setLoading(false);
     }
@@ -62,43 +81,62 @@ const LoginForm = ({
   
 
   const handleSocialLogin = (provider) => {
-    const baseUrl = import.meta.env.VITE_API_URL;
+    const baseUrl = import.meta.env.VITE_API_URL || "http://localhost:3000";
+
     if (provider === "Google") {
-      window.location.href = `${baseUrl}/api/auth/google?mode=login`;
+      window.location.href = `${baseUrl}/api/auth/google`;
       return;
     }
 
     if (provider === "GitHub") {
-      window.location.href = `${baseUrl}/api/auth/github?mode=login`;
+      window.location.href = `${baseUrl}/api/auth/github`;
       return;
     }
-    console.log(`${provider} login not implemented`);
+
+    // provider login not implemented
   };
 
   const inputBaseClasses =
-    "w-full px-4 py-3 rounded-lg border focus:border-teal-400 focus:ring-2 focus:ring-cyan-400 outline-none placeholder-gray-400 dark:placeholder-gray-500 transition";
+    "w-full px-4 py-3 rounded-lg border border-zinc-200 bg-white text-gray-900 placeholder-gray-400 focus:border-teal-400 focus:ring-2 focus:ring-cyan-400 outline-none transition";
 
   return (
-    <div className="bg-white/80 dark:bg-black/80 backdrop-blur-md p-10 flex flex-col justify-center text-gray-900 dark:text-white rounded-r-2xl">
+    <div className="bg-white border border-zinc-200 backdrop-blur-md p-10 flex flex-col justify-center text-gray-900 rounded-2xl shadow-lg">
       <h2 className="text-2xl font-bold text-center mb-2">Login</h2>
 
-      <p className="text-sm text-gray-600 dark:text-gray-300 text-center mb-8">
+      <p className="text-sm text-gray-600 text-center mb-8">
         Enter your credentials below to access your account.
       </p>
 
       <SocialButtons onClick={handleSocialLogin} />
 
       <div className="flex items-center gap-4 mb-6">
-        <div className="h-px bg-gray-300 dark:bg-gray-700 flex-1" />
-        <span className="text-xs text-gray-500 dark:text-gray-400">
+        <div className="h-px bg-zinc-200 flex-1" />
+        <span className="text-xs text-gray-500">
           or continue with email
         </span>
-        <div className="h-px bg-gray-300 dark:bg-gray-700 flex-1" />
+        <div className="h-px bg-zinc-200 flex-1" />
       </div>
 
+      {successMessage && (
+        <div className="mb-4 p-4 rounded-lg bg-green-50 border-l-4 border-green-500 text-green-800">
+          <div className="flex items-start">
+            <div className="flex-1">
+              <p className="font-medium text-sm">{successMessage}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {(errorMessage || serverError) && (
-        <div className="mb-3 p-3 rounded-md bg-red-100 text-red-700 text-sm border border-red-300 text-center">
-          {errorMessage || serverError}
+        <div className="mb-4 p-4 rounded-lg bg-red-50 border-l-4 border-red-500 text-red-800">
+          <div className="flex items-start">
+            <svg className="w-5 h-5 text-red-500 mr-3 mt-0.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+            </svg>
+            <div className="flex-1">
+              <p className="font-medium text-sm">{errorMessage || serverError}</p>
+            </div>
+          </div>
         </div>
       )}
 
@@ -111,9 +149,7 @@ const LoginForm = ({
             value={form.email}
             onChange={handleChange}
             className={`${inputBaseClasses} ${
-              errors.email
-                ? "border-red-500"
-                : "border-gray-300 dark:border-gray-600"
+              errors.email ? "border-red-500" : "border-zinc-200"
             }`}
           />
           {errors.email && (
@@ -131,17 +167,15 @@ const LoginForm = ({
             value={form.password}
             onChange={handleChange}
             className={`${inputBaseClasses} ${
-              errors.password
-                ? "border-red-500"
-                : "border-gray-300 dark:border-gray-600"
+              errors.password ? "border-red-500" : "border-zinc-200"
             }`}
           />
           <button
             type="button"
             onClick={() => setShowPassword((s) => !s)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-teal-500 transition"
+            className="absolute right-3 top-3 text-gray-500 hover:text-teal-500 transition"
           >
-            {showPassword ? <FaEyeSlash /> : <FaEye />}
+            {showPassword ? <FaEyeSlash size={18} /> : <FaEye size={18} />}
           </button>
           {errors.password && (
             <p className="text-red-500 text-xs mt-1">

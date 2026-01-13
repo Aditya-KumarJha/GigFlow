@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import TextHover from './TextHover';
 
 const EmailInput = () => {
@@ -6,13 +7,15 @@ const EmailInput = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    console.log('Email submitted:', email);
-    // Add your email submission logic here
+    // Navigate to signup and pass the email so the signup form can prefill it
+    navigate('/signup', { state: { email } });
   };
 
+  const navigate = useNavigate();
+
   return (
-    <form 
-      onSubmit={handleSubmit} 
+    <form
+      onSubmit={handleSubmit}
       className="w-full max-w-lg sm:max-w-lg"
     >
       <div className="flex items-center w-full border-2 border-gray-300 rounded-full overflow-hidden bg-white shadow-sm hover:border-gray-400 transform-gpu transition-transform duration-300 ease-out hover:scale-105 md:hover:scale-110 hover:shadow-2xl">

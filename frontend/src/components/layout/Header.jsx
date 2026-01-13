@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import Button from "../ui/Button";
+import api from "../../utils/api";
 
 const Header = () => {
+  const navigate = useNavigate();
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -10,6 +13,38 @@ const Header = () => {
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  const checkAuth = () => {
+    try {
+      if (localStorage.getItem("authToken")) return true;
+      // fallback: check cookie named token
+      return document.cookie.split(";").some(c => c.trim().startsWith("token="));
+    } catch (e) {
+      return false;
+    }
+  };
+
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(checkAuth());
+
+  useEffect(() => {
+    const onStorage = (e) => {
+      if (e.key === 'authToken') setIsAuthenticated(!!e.newValue);
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
+
+  const handleLogout = async () => {
+    try {
+      await api.post('/api/auth/logout');
+    } catch (e) {
+      // ignore errors, proceed to clear client state
+    }
+    localStorage.removeItem('authToken');
+    setIsAuthenticated(false);
+    navigate('/');
+  };
 
   return (
     <header
@@ -53,51 +88,60 @@ const Header = () => {
           </a>
 
           {/* DASHBOARD */}
-          <div className="relative group">
-            <span
-              className={`tracking-wide text-zinc-600 hover:text-black transition-all duration-300 font-medium cursor-pointer ${
-                isScrolled ? "text-[15px]" : "text-[17.3px]"
-              }`}
+            <div
+              className="relative"
+              onMouseEnter={() => setDropdownOpen(true)}
+              onMouseLeave={() => setDropdownOpen(false)}
+              onFocus={() => setDropdownOpen(true)}
+              onBlur={() => setDropdownOpen(false)}
             >
-              Dashboard
-            </span>
+              <span
+                className={`tracking-wide text-zinc-600 hover:text-black transition-all duration-300 font-medium cursor-pointer ${
+                  isScrolled ? "text-[15px]" : "text-[17.3px]"
+                }`}
+              >
+                Dashboard
+              </span>
 
-            <div className="absolute left-1/2 -translate-x-1/2 mt-2 w-40 bg-white rounded-xl shadow-lg border border-zinc-100 z-50">
-              <a href="/update-profile" className="block px-5 py-3 text-zinc-700 hover:bg-zinc-50 rounded-t-xl">
-                Update Profile
-              </a>
-              <a href="/my-gigs" className="block px-5 py-3 text-zinc-700 hover:bg-zinc-50">
-                My Gigs
-              </a>
-              <a href="/my-bids" className="block px-5 py-3 text-zinc-700 hover:bg-zinc-50 rounded-b-xl">
-                My Bids
-              </a>
+              <div className={`absolute left-1/2 -translate-x-1/2 mt-2 w-44 bg-white rounded-xl shadow-lg border border-zinc-100 z-50 ${dropdownOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'} transition-opacity duration-150`}> 
+                <a href="/update-profile" className="block px-5 py-3 text-zinc-700 hover:bg-zinc-50 rounded-t-xl">
+                  Update Profile
+                </a>
+                <a href="/my-gigs" className="block px-5 py-3 text-zinc-700 hover:bg-zinc-50">
+                  My Gigs
+                </a>
+                <a href="/my-bids" className="block px-5 py-3 text-zinc-700 hover:bg-zinc-50 rounded-b-xl">
+                  My Bids
+                </a>
+              </div>
             </div>
-
-            <style>{`
-              .group div {
-                opacity: 0;
-                pointer-events: none;
-              }
-              .group:hover div {
-                opacity: 1;
-                pointer-events: auto;
-              }
-            `}</style>
-          </div>
         </div>
 
         {/* RIGHT CTA — Desktop / Tablet */}
         <div className="hidden md:block shrink-0">
-          <Button
-            variant="primary"
-            size="md"
-            className={`transition-all duration-300 ${
-              isScrolled ? "text-sm px-4 py-2" : "text-base px-5 py-3"
-            }`}
-          >
-            Get Started
-          </Button>
+          {isAuthenticated ? (
+            <Button
+              variant="primary"
+              size="md"
+              className={`transition-all duration-300 ${
+                isScrolled ? "text-sm px-4 py-2" : "text-base px-5 py-3"
+              }`}
+              onClick={handleLogout}
+            >
+              Logout
+            </Button>
+          ) : (
+            <Button
+              variant="primary"
+              size="md"
+              className={`transition-all duration-300 ${
+                isScrolled ? "text-sm px-4 py-2" : "text-base px-5 py-3"
+              }`}
+              onClick={() => navigate("/signup")}
+            >
+              Get Started
+            </Button>
+          )}
         </div>
 
         {/* HAMBURGER / CLOSE — Mobile */}
@@ -151,9 +195,20 @@ const Header = () => {
           </a>
 
           <div className="border-t border-zinc-100">
-            <a href="/get-started" className="block px-6 py-4 font-medium text-black hover:bg-zinc-50">
-              Get Started
-            </a>
+            <button
+              type="button"
+              onClick={() => {
+                setMobileMenuOpen(false);
+                if (isAuthenticated) {
+                  handleLogout();
+                } else {
+                  navigate("/signup");
+                }
+              }}
+              className="w-full text-left px-6 py-4 font-medium text-black hover:bg-zinc-50"
+            >
+              {isAuthenticated ? 'Logout' : 'Get Started'}
+            </button>
           </div>
         </div>
       )}

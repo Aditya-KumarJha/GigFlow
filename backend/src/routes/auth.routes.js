@@ -66,7 +66,7 @@ router.get('/google/signup',
 router.get(
 	'/google/callback',
 	passport.authenticate('google', {
-		failureRedirect: '/api/auth/oauth-failure',
+		failureRedirect: '/api/auth/oauth-failure?provider=google',
 		session: false,
 	}),
 	oauthCallback('google')
@@ -87,14 +87,26 @@ router.get('/github/signup',
 router.get(
 	'/github/callback',
 	passport.authenticate('github', {
-		failureRedirect: '/api/auth/oauth-failure',
+		failureRedirect: '/api/auth/oauth-failure?provider=github',
 		session: false,
 	}),
 	oauthCallback('github')
 );
 
 router.get('/oauth-failure', (req, res) => {
-	res.status(401).json({ message: 'OAuth authentication failed' });
+	const frontend = process.env.FRONTEND_URL || 'http://localhost:5173';
+	const provider = (req.query.provider || '').toLowerCase();
+	let message = req.query.error || 'OAuth authentication failed';
+
+	if (provider === 'github') {
+		message =
+			'No GitHub account found for this user. If you registered using Google or email/password, try logging in with that method or sign up with GitHub.';
+	} else if (provider === 'google') {
+		message =
+			'No Google account found for this user. If you registered using GitHub or email/password, try logging in with that method or sign up with Google.';
+	}
+
+	return res.redirect(`${frontend}/login?error=${encodeURIComponent(message)}`);
 });
 
 // Logout
