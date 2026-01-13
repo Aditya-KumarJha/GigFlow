@@ -3,119 +3,16 @@ import Header from "../components/layout/Header";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { fetchGigs } from "../store/gigsSlice";
-import { Pencil, IndianRupee } from "lucide-react";
+import GigCard from "../components/gig/GigCard";
 
-const truncate = (s, n = 120) =>
-  s && s.length > n ? s.slice(0, n) + "..." : s || "";
-
-const formatFullName = (fullName) => {
-  if (!fullName) return null;
-  if (typeof fullName === "string") return fullName;
-  if (typeof fullName === "object") {
-    const first = fullName.firstName || "";
-    const last = fullName.lastName || "";
-    return `${first} ${last}`.trim() || null;
-  }
-  return String(fullName);
-};
-
-const GigCard = ({ gig }) => {
-  const navigate = useNavigate();
-  const auth = useSelector((s) => s.auth || { isAuthenticated: false });
-
-  const thumb =
-    gig.images?.[0]?.thumbnail ||
-    gig.images?.[0]?.url ||
-    "/placeholder.png";
-
-  const owner =
-    gig.ownerId?.username ||
-    formatFullName(gig.ownerId?.fullName) ||
-    "Unknown";
-
-  return (
-    <div className="group bg-white border border-zinc-100 rounded-2xl overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
-      {/* Image */}
-      <div className="h-50 bg-zinc-100 overflow-hidden">
-        <img
-          src={thumb}
-          alt="gig"
-          className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
-        />
-      </div>
-
-      {/* Content */}
-      <div className="p-5 flex flex-col gap-3">
-        <div className="flex items-start justify-between gap-3">
-          <h3 className="font-semibold text-lg leading-snug group-hover:text-[#FF4801] transition">
-            {gig.title}
-          </h3>
-          <span className="text-sm font-semibold text-zinc-800 bg-zinc-100 px-2 py-1 rounded-lg">
-            ₹{gig.budget}
-          </span>
-        </div>
-
-        <p className="text-sm text-zinc-600">
-          {truncate(gig.description, 120)}
-        </p>
-
-        <div className="flex items-center justify-between text-xs text-zinc-500 pt-1">
-          <span>By {owner}</span>
-          <span className="capitalize">{gig.status}</span>
-        </div>
-
-        {/* Actions */}
-        <div className="pt-4 flex items-center justify-between">
-          {gig.editable ? (
-            <button
-              onClick={() => navigate(`/post-gig?id=${gig._id}`)}
-              className="
-                flex items-center gap-2
-                px-4 py-2 text-sm font-medium
-                bg-orange-500 text-white
-                rounded-xl
-                hover:bg-orange-600
-                shadow-sm hover:shadow-md
-                transition-all active:scale-95
-              "
-            >
-              <Pencil size={16} />
-              Edit Gig
-            </button>
-          ) : (
-            <button
-              onClick={() => {
-                if (!auth.isAuthenticated)
-                  return navigate("/login", {
-                    state: { from: "/browse-gigs" },
-                  });
-                alert("Open bid UI for gig: " + gig._id);
-              }}
-              className="
-                flex items-center gap-2
-                px-4 py-2 text-sm font-medium
-                bg-emerald-500 text-white
-                rounded-xl
-                hover:bg-emerald-600
-                shadow-sm hover:shadow-md
-                transition-all active:scale-95
-              "
-            >
-              <IndianRupee size={16} />
-              Place Bid
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-};
+// GigCard extracted to components/gig/GigCard.jsx
 
 const BrowseGigs = () => {
   const dispatch = useDispatch();
-  const { items, loading, meta } = useSelector(
-    (s) => s.gigs || { items: [], loading: false, meta: {} }
-  );
+  const gigsState = useSelector((s) => s.gigs);
+  const items = gigsState?.items || [];
+  const loading = gigsState?.loading || false;
+  const meta = gigsState?.meta || {};
 
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState("latest");
@@ -123,23 +20,45 @@ const BrowseGigs = () => {
   const debounce = useRef(null);
 
   useEffect(() => {
-    dispatch(fetchGigs({ search: "", page: 1, limit: 9 }));
+    // request all statuses so assigned gigs are visible in the browse view
+    dispatch(fetchGigs({ search: "", page: 1, limit: 9, status: 'all' }));
   }, [dispatch]);
 
   useEffect(() => {
     if (debounce.current) clearTimeout(debounce.current);
     debounce.current = setTimeout(() => {
       setPage(1);
-      dispatch(fetchGigs({ search, page: 1, limit: 9 }));
+      dispatch(fetchGigs({ search, page: 1, limit: 9, status: 'all' }));
     }, 300);
     return () => clearTimeout(debounce.current);
   }, [search, dispatch]);
 
   useEffect(() => {
-    dispatch(fetchGigs({ search, page, limit: 9 }));
+    dispatch(fetchGigs({ search, page, limit: 9, status: 'all' }));
   }, [page, dispatch]);
 
-  const sortedItems = [...items].sort((a, b) => {
+  const lowerSearch = (search || "").trim().toLowerCase();
+
+  const filteredItems = lowerSearch
+    ? items.filter((g) => {
+        const title = (g.title || "").toString().toLowerCase();
+        const description = (g.description || "").toString().toLowerCase();
+        const budgetStr = (g.budget || "").toString().toLowerCase();
+        const username = (
+          (g.user && (g.user.username || g.user.name)) || ""
+        ).toString().toLowerCase();
+
+        // match if search is substring of any of these fields
+        return (
+          title.includes(lowerSearch) ||
+          description.includes(lowerSearch) ||
+          budgetStr.includes(lowerSearch) ||
+          username.includes(lowerSearch)
+        );
+      })
+    : items;
+
+  const sortedItems = [...filteredItems].sort((a, b) => {
     if (sort === "az") return a.title.localeCompare(b.title);
     if (sort === "za") return b.title.localeCompare(a.title);
     if (sort === "budget-low") return a.budget - b.budget;
@@ -163,13 +82,25 @@ const BrowseGigs = () => {
             </p>
           </div>
 
-          <div className="flex gap-3">
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search gigs…"
-              className="w-64 rounded-lg border border-zinc-300 px-4 py-2 focus:ring-2 focus:ring-[#FF4801]/30 outline-none"
-            />
+          <div className="flex gap-3 items-center">
+            <div className="relative">
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search gigs…"
+                className="w-64 rounded-lg border border-zinc-300 px-4 py-2 focus:ring-2 focus:ring-[#FF4801]/30 outline-none"
+              />
+
+              {search && search.length > 0 && (
+                <button
+                  onClick={() => setSearch("")}
+                  aria-label="Clear search"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-700"
+                >
+                  ×
+                </button>
+              )}
+            </div>
 
             <select
               value={sort}

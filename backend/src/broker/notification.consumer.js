@@ -315,7 +315,7 @@ export const startNotificationConsumers = async () => {
         <p>You have received a new bid on your gig <strong>"${data.gig.title}"</strong>.</p>
         <div style="background: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0;">
           <p style="margin: 5px 0;"><strong>Freelancer:</strong> ${freelancerName}</p>
-          <p style="margin: 5px 0;"><strong>Bid Amount:</strong> $${data.bid.price}</p>
+          <p style="margin: 5px 0;"><strong>Bid Amount:</strong> ₹${data.bid.price}</p>
           <p style="margin: 5px 0;"><strong>Message:</strong></p>
           <p style="margin: 5px 0; font-style: italic;">${data.bid.message}</p>
         </div>
@@ -328,7 +328,7 @@ export const startNotificationConsumers = async () => {
       await sendEmail({
         to: data.gigOwner.email,
         subject: `New bid on "${data.gig.title}" – GigFlow`,
-        text: `${freelancerName} submitted a bid of $${data.bid.price} on your gig "${data.gig.title}".`,
+        text: `${freelancerName} submitted a bid of ₹${data.bid.price} on your gig "${data.gig.title}".`,
         html,
       });
     } catch (error) {
@@ -347,8 +347,8 @@ export const startNotificationConsumers = async () => {
         <p>Great news! <strong>${clientName}</strong> has accepted your bid and hired you for the gig:</p>
         <div style="background: #d4edda; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #28a745;">
           <p style="margin: 5px 0;"><strong>Gig:</strong> ${data.gig.title}</p>
-          <p style="margin: 5px 0;"><strong>Budget:</strong> $${data.gig.budget}</p>
-          <p style="margin: 5px 0;"><strong>Your Bid:</strong> $${data.bid.price}</p>
+          <p style="margin: 5px 0;"><strong>Budget:</strong> ₹${data.gig.budget}</p>
+          <p style="margin: 5px 0;"><strong>Your Bid:</strong> ₹${data.bid.price}</p>
         </div>
         <p>Log in to GigFlow to start working on this project!</p>
         ${footerSignature}
@@ -374,7 +374,7 @@ export const startNotificationConsumers = async () => {
         <div style="background: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0;">
           <p style="margin: 5px 0;"><strong>Gig:</strong> ${data.gig.title}</p>
           <p style="margin: 5px 0;"><strong>Freelancer:</strong> ${freelancerName}</p>
-          <p style="margin: 5px 0;"><strong>Agreed Price:</strong> $${data.bid.price}</p>
+          <p style="margin: 5px 0;"><strong>Agreed Price:</strong> ₹${data.bid.price}</p>
         </div>
         ${data.rejectedBidsCount > 0 ? `<p><em>${data.rejectedBidsCount} other bid(s) have been automatically rejected.</em></p>` : ''}
         <p>You can now coordinate with the freelancer to begin work.</p>
@@ -405,7 +405,7 @@ export const startNotificationConsumers = async () => {
             <p>Thank you for submitting a bid for the gig <strong>"${data.gig.title}"</strong>.</p>
             <p>We appreciate your effort, but this time the client selected another freelancer.</p>
             <div style="background: #f8f9fa; padding: 12px; border-radius: 5px; margin: 12px 0;">
-              <p style="margin: 5px 0;"><strong>Your Bid:</strong> $${rb.price}</p>
+              <p style="margin: 5px 0;"><strong>Your Bid:</strong> ₹${rb.price}</p>
             </div>
             <p>Thanks for trying — keep applying to other gigs. Good luck!</p>
             ${footerSignature}

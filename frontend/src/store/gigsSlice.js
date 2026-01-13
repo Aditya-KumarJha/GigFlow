@@ -4,8 +4,9 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
 export const fetchGigs = createAsyncThunk(
   'gigs/fetchGigs',
-  async ({ search = '', page = 1, limit = 10 } = {}) => {
+  async ({ search = '', page = 1, limit = 10, status = '' } = {}) => {
     const params = new URLSearchParams({ search, page: String(page), limit: String(limit) });
+    if (status !== undefined) params.set('status', String(status));
     const res = await fetch(`${API_BASE_URL}/api/gigs?${params.toString()}`, { credentials: 'include' });
     if (!res.ok) {
       const data = await res.json().catch(() => null);

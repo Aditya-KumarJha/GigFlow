@@ -12,6 +12,7 @@ const checkCookie = () => {
 const initialState = {
   isAuthenticated: Boolean(localStorage.getItem('authToken')) || checkCookie(),
   checked: false, // becomes true after verifySession finishes (success or failure)
+  user: null,
 };
 
 export const verifySession = createAsyncThunk('auth/verifySession', async () => {
@@ -46,10 +47,13 @@ const authSlice = createSlice({
       .addCase(verifySession.fulfilled, (state, action) => {
         state.isAuthenticated = true;
         state.checked = true;
+        // backend returns { user }
+        state.user = action.payload?.user || action.payload || null;
       })
       .addCase(verifySession.rejected, (state, action) => {
         state.isAuthenticated = Boolean(localStorage.getItem('authToken')) || checkCookie();
         state.checked = true;
+        state.user = null;
       });
   }
 });

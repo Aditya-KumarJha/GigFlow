@@ -1,4 +1,5 @@
 import Gig from "../models/gig.model.js";
+import Bid from "../models/bid.model.js";
 import { publishToQueue } from "../broker/broker.js";
 import { uploadImage, imagekit } from "../services/imagekit.service.js";
 import fs from "fs/promises";
@@ -8,12 +9,18 @@ export const getGigs = async (req, res) => {
     const search = req.query.search || "";
     const page = Math.max(parseInt(req.query.page) || 1, 1);
     const limit = Math.max(parseInt(req.query.limit) || 10, 1);
+    const statusQuery = (req.query.status || '').toString().trim().toLowerCase();
     const skip = (page - 1) * limit;
 
     const filter = {
-      status: "open",
       title: { $regex: search, $options: "i" },
     };
+
+    if (statusQuery && statusQuery !== 'all') {
+      filter.status = statusQuery;
+    } else if (!statusQuery) {
+      filter.status = 'open';
+    }
 
     const [total, gigs] = await Promise.all([
       Gig.countDocuments(filter),
@@ -27,9 +34,28 @@ export const getGigs = async (req, res) => {
     const totalPages = Math.ceil(total / limit) || 1;
 
     const userId = req.user?._id?.toString();
+
+    const gigIds = gigs.map((g) => g._id);
+    const hiredBids = await Bid.find({ gigId: { $in: gigIds }, status: 'hired' }).populate('freelancerId', 'username fullName');
+    const hiredByGig = new Map();
+    for (const hb of hiredBids) {
+      const key = hb.gigId?.toString ? hb.gigId.toString() : String(hb.gigId);
+      hiredByGig.set(key, hb);
+    }
+
     const gigsWithMeta = gigs.map((g) => {
       const plain = g.toObject();
       plain.editable = userId ? (plain.ownerId?._id?.toString() === userId) : false;
+      if (plain.status === 'assigned') {
+        const hb = hiredByGig.get(String(plain._id));
+        if (hb && hb.freelancerId) {
+          plain.assignedFreelancer = {
+            id: hb.freelancerId._id,
+            username: hb.freelancerId.username,
+            fullName: hb.freelancerId.fullName,
+          };
+        }
+      }
       return plain;
     });
 
@@ -59,7 +85,24 @@ export const getGigById = async (req, res) => {
       return res.status(404).json({ message: "Gig not found" });
     }
 
-    return res.status(200).json({ gig });
+    let plain = gig.toObject();
+    if (plain.status === 'assigned') {
+      try {
+        const Bid = (await import('../models/bid.model.js')).default;
+        const hired = await Bid.findOne({ gigId: gig._id, status: 'hired' }).populate('freelancerId', 'username fullName');
+        if (hired && hired.freelancerId) {
+          plain.assignedFreelancer = {
+            id: hired.freelancerId._id,
+            username: hired.freelancerId.username,
+            fullName: hired.freelancerId.fullName,
+          };
+        }
+      } catch (err) {
+        console.error('Failed to load assigned freelancer for gig:', err);
+      }
+    }
+
+    return res.status(200).json({ gig: plain });
   } catch (error) {
     console.error("Get gig by ID error:", error);
     return res.status(400).json({ message: "Invalid gig ID" });
