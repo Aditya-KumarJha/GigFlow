@@ -1,16 +1,17 @@
 import React from 'react'
 import { Route, Routes } from 'react-router-dom'
+import HomePage from './pages/HomePage'
+import Header from './components/layout/Header';
 
 const App = () => {
   return (
-    <>
-      <div className='text-3xl font-bold text-center mt-10'>Welcome to GIGFLOW</div>
+    <div>
+      <Header />
       <Routes>
-        <Route path='/' element={<div className='text-center mt-5'>Home Page</div>} />
-        <Route path='/about' element={<div className='text-center mt-5'>About Page</div>} />
+        <Route path='/' element={<HomePage />} />
       </Routes>
-    </>
-  )
-}
+    </div>
+  );
+};
 
-export default App
+export default App;
