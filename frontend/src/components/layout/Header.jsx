@@ -2,6 +2,9 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Button from "../ui/Button";
 import api from "../../utils/api";
+import { useSelector, useDispatch } from 'react-redux'
+import { setLoggedOut, verifySession } from '../../store/authSlice'
+import { toast } from 'react-toastify'
 
 const Header = () => {
   const navigate = useNavigate();
@@ -14,26 +17,13 @@ const Header = () => {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  const checkAuth = () => {
-    try {
-      if (localStorage.getItem("authToken")) return true;
-      // fallback: check cookie named token
-      return document.cookie.split(";").some(c => c.trim().startsWith("token="));
-    } catch (e) {
-      return false;
-    }
-  };
-
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(checkAuth());
+  const dispatch = useDispatch();
+  const auth = useSelector(state => state.auth);
 
   useEffect(() => {
-    const onStorage = (e) => {
-      if (e.key === 'authToken') setIsAuthenticated(!!e.newValue);
-    };
-    window.addEventListener('storage', onStorage);
-    return () => window.removeEventListener('storage', onStorage);
-  }, []);
+    dispatch(verifySession());
+  }, [dispatch]);
 
   const handleLogout = async () => {
     try {
@@ -41,8 +31,8 @@ const Header = () => {
     } catch (e) {
       // ignore errors, proceed to clear client state
     }
-    localStorage.removeItem('authToken');
-    setIsAuthenticated(false);
+    dispatch(setLoggedOut());
+    toast.success('Logout successful');
     navigate('/');
   };
 
@@ -119,7 +109,7 @@ const Header = () => {
 
         {/* RIGHT CTA — Desktop / Tablet */}
         <div className="hidden md:block shrink-0">
-          {isAuthenticated ? (
+          {auth.isAuthenticated ? (
             <Button
               variant="primary"
               size="md"
@@ -199,7 +189,7 @@ const Header = () => {
               type="button"
               onClick={() => {
                 setMobileMenuOpen(false);
-                if (isAuthenticated) {
+                if (auth.isAuthenticated) {
                   handleLogout();
                 } else {
                   navigate("/signup");

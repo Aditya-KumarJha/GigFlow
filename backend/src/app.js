@@ -44,7 +44,7 @@ const otpLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-app.use('/api/auth',  authRoutes);
+app.use('/api/auth', authRoutes);
 app.use('/api/gigs', gigRoutes);
 app.use('/api/bids', bidRoutes);
 

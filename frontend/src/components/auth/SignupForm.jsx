@@ -3,6 +3,7 @@ import { useNavigate, Link, useLocation } from "react-router-dom";
 import SocialButtons from "./SocialButtons";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 import api from "../../utils/api";
+import { toast } from 'react-toastify';
 
 const SignupForm = ({ setOtpStep, setUserEmail }) => {
   const navigate = useNavigate();
@@ -93,11 +94,13 @@ const SignupForm = ({ setOtpStep, setUserEmail }) => {
         const validationErrors = err.response.data.errors;
         const errorMessages = validationErrors.map(e => e.msg).join('. ');
         setServerError(errorMessages);
+        toast.error(errorMessages);
       } else {
         setServerError(
           err.response?.data?.message ||
             "Something went wrong. Please try again."
         );
+        toast.error(err.response?.data?.message || "Something went wrong. Please try again.");
       }
     } finally {
       setLoading(false);
@@ -107,16 +110,17 @@ const SignupForm = ({ setOtpStep, setUserEmail }) => {
   const handleSocialLogin = (provider) => {
     const baseUrl = import.meta.env.VITE_API_URL || "http://localhost:3000";
     if (provider === "Google") {
+      try { localStorage.setItem('auth_initiated', 'social:signup:google'); } catch(e) {}
       window.location.href = `${baseUrl}/api/auth/google/signup`;
       return;
     }
 
     if (provider === "GitHub") {
+      try { localStorage.setItem('auth_initiated', 'social:signup:github'); } catch(e) {}
       window.location.href = `${baseUrl}/api/auth/github/signup`;
       return;
     }
 
-    // provider signup not implemented
   };
 
   const inputBaseClasses =
@@ -129,7 +133,7 @@ const SignupForm = ({ setOtpStep, setUserEmail }) => {
       </h2>
 
       <p className="text-sm text-gray-600 text-center mb-6">
-        Join AuthKit to power secure, modern authentication.
+        Join GigFlow to post gigs, place bids, and collaborate efficiently.      
       </p>
 
       <SocialButtons onClick={handleSocialLogin} />

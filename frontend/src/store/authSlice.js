@@ -1,0 +1,58 @@
+import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import api from '../utils/api';
+
+const checkCookie = () => {
+  try {
+    return document.cookie.split(';').some(c => c.trim().startsWith('token='));
+  } catch (e) {
+    return false;
+  }
+};
+
+const initialState = {
+  isAuthenticated: Boolean(localStorage.getItem('authToken')) || checkCookie(),
+  checked: false, // becomes true after verifySession finishes (success or failure)
+};
+
+export const verifySession = createAsyncThunk('auth/verifySession', async () => {
+  // Calls backend endpoint which reads HttpOnly cookies and returns current user/session
+  const res = await api.get('/api/auth/me');
+  return res.data;
+});
+
+const authSlice = createSlice({
+  name: 'auth',
+  initialState,
+  reducers: {
+    setAuthenticated(state, action) {
+      state.isAuthenticated = true;
+      if (action.payload?.token) {
+        try { localStorage.setItem('authToken', action.payload.token); } catch(e) {}
+      }
+    },
+    setLoggedOut(state) {
+      state.isAuthenticated = false;
+      try { localStorage.removeItem('authToken'); } catch(e) {}
+    },
+    initializeAuth(state) {
+      state.isAuthenticated = Boolean(localStorage.getItem('authToken')) || checkCookie();
+    }
+  },
+  extraReducers: (builder) => {
+    builder
+      .addCase(verifySession.pending, (state) => {
+        state.checked = false;
+      })
+      .addCase(verifySession.fulfilled, (state, action) => {
+        state.isAuthenticated = true;
+        state.checked = true;
+      })
+      .addCase(verifySession.rejected, (state, action) => {
+        state.isAuthenticated = Boolean(localStorage.getItem('authToken')) || checkCookie();
+        state.checked = true;
+      });
+  }
+});
+
+export const { setAuthenticated, setLoggedOut, initializeAuth } = authSlice.actions;
+export default authSlice.reducer;

@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import SocialButtons from "./SocialButtons";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 import api from "../../utils/api";
+import { toast } from 'react-toastify';
 
 const LoginForm = ({
   setOtpStep,
@@ -24,12 +25,14 @@ const LoginForm = ({
     const error = searchParams.get("error");
     if (error) {
       setServerError(error);
+      toast.error(error);
       searchParams.delete("error");
       setSearchParams(searchParams, { replace: true });
     }
     const reset = searchParams.get("reset");
     if (reset) {
       setSuccessMessage("Your password has been reset. Please login with your new password.");
+      toast.success("Your password has been reset. Please login with your new password.");
       searchParams.delete("reset");
       setSearchParams(searchParams, { replace: true });
     }
@@ -68,10 +71,12 @@ const LoginForm = ({
         const validationErrors = err.response.data.errors;
         const errorMessages = validationErrors.map(e => e.msg).join('. ');
         setServerError(errorMessages);
+        toast.error(errorMessages);
       } else {
         setServerError(
           err.response?.data?.message || "Login failed. Please try again."
         );
+        toast.error(err.response?.data?.message || "Login failed. Please try again.");
       }
     } finally {
       setLoading(false);
@@ -84,11 +89,13 @@ const LoginForm = ({
     const baseUrl = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
     if (provider === "Google") {
+      try { localStorage.setItem('auth_initiated', 'social:login:google'); } catch(e) {}
       window.location.href = `${baseUrl}/api/auth/google`;
       return;
     }
 
     if (provider === "GitHub") {
+      try { localStorage.setItem('auth_initiated', 'social:login:github'); } catch(e) {}
       window.location.href = `${baseUrl}/api/auth/github`;
       return;
     }

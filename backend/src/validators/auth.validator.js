@@ -12,7 +12,7 @@ export const registerUserValidations = [
     body("email")
         .isEmail()
         .withMessage("Invalid email address")
-        .normalizeEmail(),
+        ,
     body("password")
         .isLength({ min: 6 })
         .withMessage("Password must be at least 6 characters long")
@@ -57,7 +57,7 @@ export const verifyOTPValidations = [
     body("email")
         .isEmail()
         .withMessage("Invalid email address")
-        .normalizeEmail(),
+        ,
     body("otp")
         .isString()
         .withMessage("OTP must be a string")
@@ -72,7 +72,7 @@ export const resendOTPValidations = [
         .optional()
         .isEmail()
         .withMessage("Invalid email address")
-        .normalizeEmail(),
+        ,
     body("username")
         .optional()
         .isString()
@@ -95,7 +95,7 @@ export const loginUserValidations = [
         .optional()
         .isEmail()
         .withMessage("Invalid email address")
-        .normalizeEmail(),
+        ,
     body("username")
         .optional()
         .isString()
@@ -121,7 +121,7 @@ export const verifyLoginOTPValidations = [
         .optional()
         .isEmail()
         .withMessage("Invalid email address")
-        .normalizeEmail(),
+        ,
     body("username")
         .optional()
         .isString()
@@ -150,7 +150,7 @@ export const forgotPasswordValidations = [
         .optional()
         .isEmail()
         .withMessage("Invalid email address")
-        .normalizeEmail(),
+        ,
     body("username")
         .optional()
         .isString()
@@ -173,7 +173,7 @@ export const verifyForgotPasswordOTPValidations = [
         .optional()
         .isEmail()
         .withMessage("Invalid email address")
-        .normalizeEmail(),
+        ,
     body("username")
         .optional()
         .isString()
@@ -202,7 +202,7 @@ export const resetPasswordValidations = [
         .optional()
         .isEmail()
         .withMessage("Invalid email address")
-        .normalizeEmail(),
+        ,
     body("username")
         .optional()
         .isString()
@@ -258,7 +258,6 @@ export const updateProfileValidations = [
         .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
         .withMessage("New password must contain at least one uppercase letter, one lowercase letter, and one number"),
     (req, res, next) => {
-        // If changing password, both currentPassword and newPassword are required
         if ((req.body.currentPassword && !req.body.newPassword) || (!req.body.currentPassword && req.body.newPassword)) {
             return res.status(400).json({ 
                 errors: [{ msg: 'Both currentPassword and newPassword are required to change password' }] 
@@ -267,4 +266,3 @@ export const updateProfileValidations = [
         respondWithValidationErrors(req, res, next);
     },
 ];
-

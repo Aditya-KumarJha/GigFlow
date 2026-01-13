@@ -1,9 +1,13 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../utils/api";
+import { useDispatch } from 'react-redux'
+import { setAuthenticated } from '../../store/authSlice'
+import { toast } from 'react-toastify'
 
 const OtpForm = ({ email, context, onVerified }) => {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
 
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const otpRefs = useRef([]);
@@ -88,13 +92,22 @@ const OtpForm = ({ email, context, onVerified }) => {
         }
       } else {
         if (res.data?.token) {
-          localStorage.setItem("authToken", res.data.token);
+          dispatch(setAuthenticated({ token: res.data.token }));
         }
+        // Show appropriate toast after successful register or login
+        if (context === 'register') {
+          toast.success('Signup successful');
+        } else if (context === 'login') {
+          toast.success('Login successful');
+        }
+
         // After successful register or login, redirect to home
         navigate("/");
       }
     } catch (err) {
-      setServerError(err.response?.data?.message || "OTP verification failed.");
+      const msg = err.response?.data?.message || "OTP verification failed.";
+      setServerError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }

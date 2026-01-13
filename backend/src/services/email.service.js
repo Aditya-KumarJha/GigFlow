@@ -11,7 +11,6 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-// Verify the connection configuration
 transporter.verify((error, success) => {
   if (error) {
     console.error("Error connecting to email server:", error);
@@ -20,7 +19,6 @@ transporter.verify((error, success) => {
   }
 });
 
-// ✅ NAMED EXPORT
 export const sendEmail = async ({ to, subject, text, html }) => {
   try {
     const info = await transporter.sendMail({

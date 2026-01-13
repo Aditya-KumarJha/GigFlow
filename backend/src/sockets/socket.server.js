@@ -16,7 +16,6 @@ export async function initSocketServer(httpServer) {
         },
     });
 
-    // authenticate socket using JWT from cookie
     io.use((socket, next) => {
         try {
             const cookies = socket.handshake.headers?.cookie || '';

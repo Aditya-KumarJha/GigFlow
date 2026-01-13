@@ -16,7 +16,6 @@ export const registerUser = async (req, res) => {
       provider = "email",
     } = req.body;
 
-    // 1. Basic validation
     if (!email) {
       return res.status(400).json({ message: "Email is required" });
     }
@@ -27,11 +26,9 @@ export const registerUser = async (req, res) => {
         .json({ message: "Password is required for email signup" });
     }
 
-    // 2. Check if user already exists
     const existingUser = await userModel.findOne({ email });
     if (existingUser) {
       if (!existingUser.isVerified) {
-        // If OTP expired, allow re-registration by deleting old user
         if (!existingUser.otp || !existingUser.otp.expiresAt || existingUser.otp.expiresAt < new Date()) {
           await userModel.deleteOne({ _id: existingUser._id });
         } else {
@@ -42,17 +39,14 @@ export const registerUser = async (req, res) => {
       }
     }
 
-    // 3. Hash password
     let hashedPassword;
     if (provider === "email") {
       hashedPassword = await bcrypt.hash(password, 12);
     }
 
-    // 4. Generate OTP
     const otpData = generateOTP();
-    console.log("Generated OTP for signup:", otpData.code); // For testing purposes
+    console.log("Generated OTP for signup:", otpData.code); 
 
-    // 5. Create user
     await userModel.create({
       email,
       password: hashedPassword,
@@ -63,7 +57,6 @@ export const registerUser = async (req, res) => {
       isVerified: false,
     });
 
-    // 6. Send email via queue (NON-BLOCKING)
     await publishToQueue('AUTH_NOTIFICATION.REGISTER_OTP', {
       email,
       fullName,
@@ -71,7 +64,6 @@ export const registerUser = async (req, res) => {
       otpCode: otpData.code,
     });
 
-    // 7. Respond immediately
     return res.status(201).json({
       message: "Registration successful. Please verify your email.",
     });
@@ -88,14 +80,12 @@ export const verifyRegisterOTP = async (req, res) => {
   try {
     const { email, otp } = req.body;
 
-    // 1. Input validation
     if (!email || !otp) {
       return res.status(400).json({
         message: "Email and OTP are required",
       });
     }
 
-    // 2. Fetch user
     const user = await userModel.findOne({ email });
     if (!user) {
       return res.status(404).json({
@@ -103,41 +93,41 @@ export const verifyRegisterOTP = async (req, res) => {
       });
     }
 
-    // 3. Already verified
+    if (user.provider && user.provider !== "email") {
+      return res.status(400).json({
+        message: `Account registered via ${user.provider}. OTP resend is not available for OAuth accounts. Please sign in using ${user.provider}.`,
+      });
+    }
+
     if (user.isVerified) {
       return res.status(400).json({
         message: "User is already verified",
       });
     }
 
-    // 4. OTP not generated / missing
     if (!user.otp || !user.otp.code || !user.otp.expiresAt) {
       return res.status(400).json({
         message: "OTP not found. Please request a new OTP.",
       });
     }
 
-    // 5. OTP expired
     if (user.otp.expiresAt < new Date()) {
       return res.status(400).json({
         message: "OTP has expired. Please request a new OTP.",
       });
     }
 
-    // 6. OTP mismatch
     if (user.otp.code !== otp) {
       return res.status(400).json({
         message: "Invalid OTP",
       });
     }
 
-    // 7. Success → verify user
     user.isVerified = true;
-    user.otp = undefined; // prevent reuse
+    user.otp = undefined; 
 
     await user.save();
 
-    // 8. Generate JWT and set cookie
     const token = jwt.sign(
       {
         id: user._id,
@@ -155,7 +145,6 @@ export const verifyRegisterOTP = async (req, res) => {
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
 
-    // 9. Send welcome email
     await publishToQueue('AUTH_NOTIFICATION.WELCOME_USER', {
       email: user.email,
       fullName: user.fullName,
@@ -170,7 +159,7 @@ export const verifyRegisterOTP = async (req, res) => {
         username: user.username,
         fullName: user.fullName,
       },
-      token, // Optional: for client-side use if needed
+      token, 
     });
 
   } catch (error) {
@@ -191,7 +180,6 @@ export const resendOTP = async (req, res) => {
       });
     }
 
-    // Find user by email or username
     let user = null;
     if (email) {
       user = await userModel.findOne({ email });
@@ -199,26 +187,24 @@ export const resendOTP = async (req, res) => {
     if (!user && username) {
       user = await userModel.findOne({ username });
     }
+    console.debug('[resendOTP] lookup result:', !!user, user ? { id: user._id, email: user.email, provider: user.provider } : null);
     if (!user) {
       return res.status(404).json({
         message: "User not found",
       });
     }
 
-    // Already verified
     if (user.isVerified) {
       return res.status(400).json({
         message: "User is already verified",
       });
     }
 
-    // Generate new OTP (invalidate old one)
     const otpData = generateOTP();
-    console.log("Resent OTP code:", otpData.code); // For testing purposes
+    console.log("Resent OTP code:", otpData.code); 
     user.otp = otpData;
     await user.save();
 
-    // Send email via queue
     await publishToQueue('AUTH_NOTIFICATION.RESEND_OTP', {
       email: user.email,
       fullName: user.fullName,
@@ -226,7 +212,6 @@ export const resendOTP = async (req, res) => {
       otpCode: otpData.code,
     });
 
-    // Response
     return res.status(200).json({
       message: "OTP resent successfully",
     });
@@ -249,7 +234,6 @@ export const loginUser = async (req, res) => {
       });
     }
 
-    // Find user by email or username
     let user = null;
     if (email) {
       user = await userModel.findOne({ email }).select("+password");
@@ -263,21 +247,18 @@ export const loginUser = async (req, res) => {
       });
     }
 
-    // Provider check
     if (user.provider !== "email") {
       return res.status(400).json({
         message: `Please login using ${user.provider}`,
       });
     }
 
-    // Email verification check
     if (!user.isVerified) {
       return res.status(403).json({
         message: "Please verify your email before logging in",
       });
     }
 
-    // Password match
     const isPasswordValid = await bcrypt.compare(
       password,
       user.password
@@ -289,13 +270,11 @@ export const loginUser = async (req, res) => {
       });
     }
 
-    // Generate OTP for login
     const otpData = generateOTP();
-    console.log("Generated OTP for login:", otpData.code); // For testing purposes
+    console.log("Generated OTP for login:", otpData.code); 
     user.otp = otpData;
     await user.save();
 
-    // Send OTP via queue
     await publishToQueue('AUTH_NOTIFICATION.LOGIN_OTP', {
       email: user.email,
       fullName: user.fullName,
@@ -303,7 +282,6 @@ export const loginUser = async (req, res) => {
       otpCode: otpData.code,
     });
 
-    // Respond (NOT logged in yet)
     return res.status(200).json({
       message: "OTP sent to your email. Please verify to complete login.",
     });
@@ -326,7 +304,6 @@ export const verifyLoginOTP = async (req, res) => {
       });
     }
 
-    // Find user by email or username
     let user = null;
     if (email) {
       user = await userModel.findOne({ email });
@@ -340,32 +317,27 @@ export const verifyLoginOTP = async (req, res) => {
       });
     }
 
-    // OTP existence
     if (!user.otp || !user.otp.code || !user.otp.expiresAt) {
       return res.status(400).json({
         message: "OTP not found. Please login again.",
       });
     }
 
-    // OTP expired
     if (user.otp.expiresAt < new Date()) {
       return res.status(400).json({
         message: "OTP expired. Please login again.",
       });
     }
 
-    // OTP match
     if (user.otp.code !== otp) {
       return res.status(400).json({
         message: "Invalid OTP",
       });
     }
 
-    // Clear OTP
     user.otp = undefined;
     await user.save();
 
-    // Generate JWT and set cookie
     const token = jwt.sign(
       {
         id: user._id,
@@ -383,7 +355,6 @@ export const verifyLoginOTP = async (req, res) => {
       maxAge: 7 * 24 * 60 * 60 * 1000, 
     });
 
-    // Send login success email
     await publishToQueue('AUTH_NOTIFICATION.LOGIN_SUCCESS', {
       email: user.email,
       fullName: user.fullName,
@@ -398,7 +369,7 @@ export const verifyLoginOTP = async (req, res) => {
         username: user.username,
         fullName: user.fullName,
       },
-      token, // Optional: for client-side use if needed
+      token, 
     });
 
   } catch (error) {
@@ -415,7 +386,7 @@ export const forgotPassword = async (req, res) => {
     if (!email && !username) {
       return res.status(400).json({ message: "Either email or username is required" });
     }
-    // Find user by email or username
+
     let user = null;
     if (email) {
       user = await userModel.findOne({ email });
@@ -426,12 +397,20 @@ export const forgotPassword = async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
-    // Generate OTP for password reset
+    if (user.provider && user.provider !== "email") {
+      return res.status(400).json({ message: `Cannot reset password for accounts registered via ${user.provider}. Use ${user.provider} sign-in or contact support.` });
+    }
+    if (user.provider && user.provider !== "email") {
+      return res.status(400).json({ message: `This account uses ${user.provider} sign-in. Password reset via OTP is not available.` });
+    }
+    if (user.provider && user.provider !== "email") {
+      return res.status(400).json({ message: `Password reset not available for accounts registered via ${user.provider}. Use ${user.provider} sign-in or contact support.` });
+    }
     const otpData = generateOTP();
-    console.log("Generated OTP for forgot password:", otpData.code); // For testing purposes
+    console.log("Generated OTP for forgot password:", otpData.code); 
     user.otp = otpData;
     await user.save();
-    // Send OTP email via queue
+
     await publishToQueue('AUTH_NOTIFICATION.FORGOT_PASSWORD_OTP', {
       email: user.email,
       fullName: user.fullName,
@@ -450,6 +429,7 @@ export const forgotPassword = async (req, res) => {
 export const verifyForgotPasswordOTP = async (req, res) => {
   try {
     const { email, username, otp } = req.body;
+    console.debug('[verifyForgotPasswordOTP] request body:', { email, username, otpProvided: !!otp });
     if ((!email && !username) || !otp) {
       return res.status(400).json({ message: "Email or username and OTP are required" });
     }
@@ -460,7 +440,9 @@ export const verifyForgotPasswordOTP = async (req, res) => {
     if (!user && username) {
       user = await userModel.findOne({ username });
     }
+    console.debug('[verifyForgotPasswordOTP] lookup result:', !!user, user ? { id: user._id, email: user.email, provider: user.provider } : null);
     if (!user) {
+      console.info('[verifyForgotPasswordOTP] user not found for', { email, username });
       return res.status(404).json({ message: "User not found" });
     }
     if (!user.otp || !user.otp.code || !user.otp.expiresAt) {
@@ -473,7 +455,7 @@ export const verifyForgotPasswordOTP = async (req, res) => {
       return res.status(400).json({ message: "Invalid OTP" });
     }
     user.otp = undefined;
-    user._canResetPassword = true; // Not persisted, just for this request
+    user._canResetPassword = true; 
     await user.save();
     return res.status(200).json({
       message: "OTP verified. You can now reset your password.",
@@ -489,6 +471,7 @@ export const verifyForgotPasswordOTP = async (req, res) => {
 export const resetPassword = async (req, res) => {
   try {
     const { email, username, newPassword } = req.body;
+    console.debug('[resetPassword] request body:', { email, username, newPasswordProvided: !!newPassword });
     
     if ((!email && !username) || !newPassword) {
       return res.status(400).json({ message: "Email or username and new password are required" });
@@ -498,7 +481,6 @@ export const resetPassword = async (req, res) => {
       return res.status(400).json({ message: "Password must be at least 6 characters long" });
     }
     
-    // Find user
     let user = null;
     if (email) {
       user = await userModel.findOne({ email });
@@ -508,15 +490,14 @@ export const resetPassword = async (req, res) => {
     }
     
     if (!user) {
+      console.info('[resetPassword] user not found for', { email, username });
       return res.status(404).json({ message: "User not found" });
     }
     
-    // Hash new password
     const hashedPassword = await bcrypt.hash(newPassword, 12);
     user.password = hashedPassword;
     await user.save();
     
-    // Send password update confirmation email
     await publishToQueue('AUTH_NOTIFICATION.PASSWORD_UPDATED', {
       email: user.email,
       fullName: user.fullName,
@@ -555,8 +536,7 @@ export const oauthCallback = (provider) => async (req, res) => {
       sameSite: 'strict',
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
-    
-    // Send welcome/login email via queue
+
     if (isNewUser) {
       await publishToQueue('AUTH_NOTIFICATION.OAUTH_WELCOME', {
         email: user.email,
@@ -581,7 +561,6 @@ export const oauthCallback = (provider) => async (req, res) => {
 
 export const logout = async (req, res) => {
   try {
-    // Clear the JWT cookie
     res.clearCookie('token', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -601,7 +580,6 @@ export const logout = async (req, res) => {
 
 export const getCurrentUser = async (req, res) => {
   try {
-    // req.user is set by authMiddleware
     return res.status(200).json({
       user: {
         id: req.user._id,
@@ -626,16 +604,13 @@ export const updateProfile = async (req, res) => {
     const userId = req.user._id;
     const { username, fullName, currentPassword, newPassword } = req.body;
 
-    // Find user with password field
     const user = await userModel.findById(userId).select('+password');
     
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // Update username if provided
     if (username !== undefined && username !== user.username) {
-      // Check if username is already taken
       const existingUser = await userModel.findOne({ username });
       if (existingUser && existingUser._id.toString() !== userId.toString()) {
         return res.status(400).json({ message: 'Username already taken' });
@@ -643,39 +618,32 @@ export const updateProfile = async (req, res) => {
       user.username = username;
     }
 
-    // Update fullName if provided
     if (fullName !== undefined) {
       user.fullName = fullName;
     }
 
-    // Update password if both current and new password provided
     if (currentPassword && newPassword) {
-      // Only allow password update for email provider
       if (user.provider !== 'email') {
         return res.status(400).json({ 
           message: 'Password cannot be changed for OAuth accounts' 
         });
       }
 
-      // Verify current password
       const isPasswordValid = await bcrypt.compare(currentPassword, user.password);
       if (!isPasswordValid) {
         return res.status(400).json({ message: 'Current password is incorrect' });
       }
 
-      // Validate new password
       if (newPassword.length < 6) {
         return res.status(400).json({ 
           message: 'New password must be at least 6 characters long' 
         });
       }
 
-      // Hash and update new password
       const hashedPassword = await bcrypt.hash(newPassword, 12);
       user.password = hashedPassword;
     }
 
-    // Handle profile picture upload
     if (req.file) {
       try {
         let buffer = req.file.buffer;
@@ -692,7 +660,6 @@ export const updateProfile = async (req, res) => {
 
     await user.save();
 
-    // Send profile updated notification
     try {
       await publishToQueue('AUTH_NOTIFICATION.PROFILE_UPDATED', {
         email: user.email,
@@ -723,4 +690,3 @@ export const updateProfile = async (req, res) => {
     });
   }
 };
-

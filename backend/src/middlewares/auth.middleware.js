@@ -1,14 +1,8 @@
 import jwt from 'jsonwebtoken';
 import userModel from '../models/user.model.js';
 
-/**
- * Middleware to verify JWT token from HttpOnly cookie
- * Protects routes that require authentication
- * Attaches user object to req.user for downstream use
- */
 export const authMiddleware = async (req, res, next) => {
   try {
-    // 1. Extract token from cookie
     const token = req.cookies?.token;
 
     if (!token) {
@@ -17,7 +11,6 @@ export const authMiddleware = async (req, res, next) => {
       });
     }
 
-    // 2. Verify token
     let decoded;
     try {
       decoded = jwt.verify(token, process.env.JWT_SECRET);
@@ -32,7 +25,6 @@ export const authMiddleware = async (req, res, next) => {
       });
     }
 
-    // 3. Fetch user from database (exclude password)
     const user = await userModel.findById(decoded.id).select('-password');
 
     if (!user) {
@@ -41,17 +33,14 @@ export const authMiddleware = async (req, res, next) => {
       });
     }
 
-    // 4. Check if user is verified
     if (!user.isVerified) {
       return res.status(403).json({
         message: 'Please verify your email before accessing this resource.',
       });
     }
 
-    // 5. Attach user to request object
     req.user = user;
 
-    // 6. Proceed to next middleware/route handler
     next();
   } catch (error) {
     console.error('Auth middleware error:', error);
@@ -61,10 +50,6 @@ export const authMiddleware = async (req, res, next) => {
   }
 };
 
-/**
- * Optional middleware to check authentication without enforcing it
- * Useful for routes where user info is optional (e.g., public gigs with owner info)
- */
 export const optionalAuth = async (req, res, next) => {
   try {
     const token = req.cookies?.token;
@@ -80,7 +65,6 @@ export const optionalAuth = async (req, res, next) => {
     req.user = user || null;
     next();
   } catch (error) {
-    // Silent fail - just set user to null
     req.user = null;
     next();
   }

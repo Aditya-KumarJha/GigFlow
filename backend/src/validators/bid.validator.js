@@ -1,9 +1,6 @@
 import { body, param, validationResult } from "express-validator";
 import mongoose from "mongoose";
 
-/**
- * Middleware to check validation results
- */
 const checkValidation = (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -15,9 +12,6 @@ const checkValidation = (req, res, next) => {
   next();
 };
 
-/**
- * Validations for submitting a bid
- */
 export const submitBidValidations = [
   body("gigId")
     .notEmpty()
@@ -45,9 +39,6 @@ export const submitBidValidations = [
   checkValidation,
 ];
 
-/**
- * Validation for gigId parameter
- */
 export const gigIdParamValidation = [
   param("gigId")
     .notEmpty()
@@ -58,9 +49,6 @@ export const gigIdParamValidation = [
   checkValidation,
 ];
 
-/**
- * Validation for bidId parameter
- */
 export const bidIdParamValidation = [
   param("bidId")
     .notEmpty()

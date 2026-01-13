@@ -304,8 +304,6 @@ export const startNotificationConsumers = async () => {
     }
   });
 
-  // BID NOTIFICATIONS
-
   subscribeToQueue("BID_NOTIFICATION.CREATED", async (data) => {
     const freelancerName = getCustomerName(data.freelancer);
     const clientName = getCustomerName(data.gigOwner);
@@ -342,7 +340,6 @@ export const startNotificationConsumers = async () => {
     const freelancerName = getCustomerName(data.freelancer);
     const clientName = getCustomerName(data.client);
 
-    // Email to hired freelancer
     const freelancerHtml = emailLayout({
       title: "🎉 Congratulations! You've Been Hired!",
       body: `
@@ -369,7 +366,6 @@ export const startNotificationConsumers = async () => {
       console.error('Failed to send hired notification to freelancer:', error);
     }
 
-    // Email to client confirming hire
     const clientHtml = emailLayout({
       title: "Freelancer Hired Successfully ✅",
       body: `
@@ -397,7 +393,6 @@ export const startNotificationConsumers = async () => {
       console.error('Failed to send hire confirmation to client:', error);
     }
 
-    // Email to rejected bidders (if any)
     if (Array.isArray(data.rejectedBidders) && data.rejectedBidders.length > 0) {
       for (const rb of data.rejectedBidders) {
         const bidder = rb.freelancer || {};

@@ -11,6 +11,7 @@ const ForgotPassword = ({ email, setEmail, onBack }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
+  const [providerHint, setProviderHint] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -26,10 +27,24 @@ const ForgotPassword = ({ email, setEmail, onBack }) => {
       setLoading(true);
       setError(null);
 
-      await api.post("/api/auth/forgot-password", { email });
+      const resp = await api.post("/api/auth/forgot-password", { email });
+      console.debug('[ForgotPassword] forgot-password response', resp && resp.data);
       setStep("verify");
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to send OTP");
+      console.error('[ForgotPassword] forgot-password error', err);
+      const msg = err.response?.data?.message || "Failed to send OTP";
+      setError(msg);
+      try {
+        const providerMatch = msg.match(/(google|github|facebook)/i);
+        if (providerMatch) {
+          setProviderHint(providerMatch[1].toLowerCase());
+        } else {
+          setProviderHint(null);
+        }
+      } catch (e) {
+        console.error('[ForgotPassword] provider hint parse error', e);
+        setProviderHint(null);
+      }
     } finally {
       setLoading(false);
     }
@@ -60,7 +75,8 @@ const ForgotPassword = ({ email, setEmail, onBack }) => {
       setLoading(true);
       setError(null);
 
-      await api.post("/api/auth/reset-password", {
+      console.debug('[ForgotPassword] sending reset-password request', { email });
+      const resp = await api.post("/api/auth/reset-password", {
         email,
         newPassword: password,
       });
@@ -86,6 +102,22 @@ const ForgotPassword = ({ email, setEmail, onBack }) => {
       {error && (
         <div className="mb-3 p-3 rounded-md bg-red-100 text-red-700 text-sm border border-red-300 text-center">
           {error}
+        </div>
+      )}
+
+      {providerHint && (
+        <div className="mb-3 text-center">
+          <p className="text-sm text-gray-600 mb-2">Or sign in using your {providerHint} account</p>
+          <button
+            onClick={() => {
+              // Redirect to backend OAuth entrypoint which will start the provider flow
+              const baseUrl = import.meta.env.VITE_API_URL || "http://localhost:3000";
+              window.location.href = `${baseUrl}/api/auth/${providerHint}`;
+            }}
+            className="px-4 py-2 rounded-md bg-blue-500 text-white"
+          >
+            Continue with {providerHint.charAt(0).toUpperCase() + providerHint.slice(1)}
+          </button>
         </div>
       )}
 

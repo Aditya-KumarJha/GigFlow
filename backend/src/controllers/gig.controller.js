@@ -26,7 +26,6 @@ export const getGigs = async (req, res) => {
 
     const totalPages = Math.ceil(total / limit) || 1;
 
-    // Add editable flag when optional auth set req.user
     const userId = req.user?._id?.toString();
     const gigsWithMeta = gigs.map((g) => {
       const plain = g.toObject();
@@ -71,21 +70,18 @@ export const createGig = async (req, res) => {
   try {
     const { title, description, budget } = req.body;
 
-    // Basic validation
     if (!title || !description || budget === undefined) {
       return res.status(400).json({
         message: "Title, description, and budget are required",
       });
     }
 
-    // Handle optional image uploads (max 3)
     let images = [];
     if (req.files && req.files.length > 0) {
       if (req.files.length > 3) {
         return res.status(400).json({ message: "Maximum 3 images are allowed" });
       }
       try {
-        // Parallelize image uploads for better performance
         const uploadPromises = req.files.map(async (file) => {
           let buffer = file.buffer;
           if (!buffer && file.path) {
@@ -111,7 +107,6 @@ export const createGig = async (req, res) => {
       images,
     });
 
-    // Publish gig created event for notifications / async processing
     try {
       await publishToQueue('GIG_NOTIFICATION.CREATED', {
         gig: {
@@ -144,7 +139,6 @@ export const updateGig = async (req, res) => {
   try {
     const { title, description, budget, replaceImages } = req.body;
 
-    // Handle optional image uploads (max 3)
     let newImages = [];
     if (req.files && req.files.length > 0) {
       if (req.files.length > 3) {
@@ -167,7 +161,6 @@ export const updateGig = async (req, res) => {
       }
     }
 
-    // Parse imagesToRemove
     let idsToRemove = [];
     if (req.body.imagesToRemove) {
       try {
@@ -179,15 +172,12 @@ export const updateGig = async (req, res) => {
       }
     }
 
-    // Build atomic update query
     const updateFields = {};
     if (title) updateFields.title = title;
     if (description) updateFields.description = description;
     if (budget !== undefined) updateFields.budget = budget;
 
-    // Handle image updates atomically
     if (newImages.length > 0 || idsToRemove.length > 0) {
-      // Fetch current gig to calculate new images
       const currentGig = await Gig.findOne({ 
         _id: req.params.id,
         ownerId: req.user._id,
@@ -200,16 +190,13 @@ export const updateGig = async (req, res) => {
 
       let updatedImages = Array.isArray(currentGig.images) ? currentGig.images : [];
 
-      // Remove specified images
       if (idsToRemove.length > 0) {
         updatedImages = updatedImages.filter((img) => !idsToRemove.includes(img.imagekitId));
       }
 
-      // Add or replace images
       if (replaceImages === 'true' || replaceImages === true) {
         updatedImages = newImages;
       } else if (newImages.length > 0) {
-        // If there are already 3 images and user isn't replacing them, disallow additional uploads
         if ((updatedImages.length || 0) >= 3 && !(replaceImages === 'true' || replaceImages === true)) {
           return res.status(400).json({ message: 'Maximum 3 images allowed. Delete existing images before adding new ones.' });
         }
@@ -224,16 +211,15 @@ export const updateGig = async (req, res) => {
       updateFields.images = updatedImages;
     }
 
-    // CRITICAL: Atomic update with race condition protection
     const gig = await Gig.findOneAndUpdate(
       { 
         _id: req.params.id,
         ownerId: req.user._id,
-        status: "open"  // Only allow updates on open gigs
+        status: "open"  
       },
       { $set: updateFields },
       { 
-        new: true,  // Return updated document
+        new: true,  
         runValidators: true
       }
     ).populate("ownerId", "email username fullName");
@@ -244,7 +230,6 @@ export const updateGig = async (req, res) => {
       });
     }
 
-    // Publish gig updated event
     try {
       await publishToQueue('GIG_NOTIFICATION.UPDATED', {
         gig: {
@@ -275,11 +260,10 @@ export const updateGig = async (req, res) => {
 
 export const deleteGig = async (req, res) => {
   try {
-    // CRITICAL: Atomic delete with race condition protection
     const gig = await Gig.findOneAndDelete({
       _id: req.params.id,
       ownerId: req.user._id,
-      status: "open"  // Only allow deletion of open gigs
+      status: "open"  
     });
 
     if (!gig) {
@@ -288,7 +272,6 @@ export const deleteGig = async (req, res) => {
       });
     }
 
-    // Cleanup images from ImageKit
     if (gig.images && Array.isArray(gig.images) && gig.images.length > 0) {
       for (const image of gig.images) {
         if (image.imagekitId) {
@@ -297,13 +280,11 @@ export const deleteGig = async (req, res) => {
             console.log(`Deleted image ${image.imagekitId} from ImageKit`);
           } catch (err) {
             console.error(`Failed to delete image ${image.imagekitId} from ImageKit:`, err);
-            // Continue deletion even if ImageKit cleanup fails
           }
         }
       }
     }
 
-    // Publish gig deleted event
     try {
       await publishToQueue('GIG_NOTIFICATION.DELETED', {
         gig: {

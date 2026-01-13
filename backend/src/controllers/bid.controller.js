@@ -8,7 +8,6 @@ export const submitBid = async (req, res) => {
   try {
     const { gigId, message, price } = req.body;
 
-    // 1. Validation
     if (!gigId || !message || price === undefined) {
       return res.status(400).json({
         message: "gigId, message, and price are required",
@@ -21,7 +20,6 @@ export const submitBid = async (req, res) => {
       });
     }
 
-    // 2. Check if gig exists
     const gig = await Gig.findById(gigId).populate("ownerId", "email username fullName");
 
     if (!gig) {
@@ -30,21 +28,18 @@ export const submitBid = async (req, res) => {
       });
     }
 
-    // 3. CRITICAL: User cannot bid on their own gig
     if (gig.ownerId._id.equals(req.user._id)) {
       return res.status(403).json({
         message: "You cannot bid on your own gig",
       });
     }
 
-    // 4. CRITICAL: Gig must be open
     if (gig.status !== "open") {
       return res.status(400).json({
         message: "This gig is no longer accepting bids",
       });
     }
 
-    // 5. Check if user already bid (unique index will catch this too, but explicit check is clearer)
     const existingBid = await Bid.findOne({
       gigId,
       freelancerId: req.user._id,
@@ -56,7 +51,6 @@ export const submitBid = async (req, res) => {
       });
     }
 
-    // 6. Create bid
     const bid = await Bid.create({
       gigId,
       freelancerId: req.user._id,
@@ -65,11 +59,9 @@ export const submitBid = async (req, res) => {
       status: "pending",
     });
 
-    // 7. Populate for response
     await bid.populate("freelancerId", "username fullName profilePic");
     await bid.populate("gigId", "title budget");
 
-    // 8. Publish bid created event (non-blocking)
     publishToQueue("BID_NOTIFICATION.CREATED", {
       bid: {
         id: bid._id,
@@ -102,7 +94,6 @@ export const submitBid = async (req, res) => {
   } catch (error) {
     console.error("Submit bid error:", error);
 
-    // Handle duplicate bid error from unique index
     if (error.code === 11000) {
       return res.status(409).json({
         message: "You have already submitted a bid for this gig",
@@ -166,7 +157,6 @@ export const hireBid = async (req, res) => {
   try {
     const { bidId } = req.params;
 
-    // 1. Validate bidId
     if (!mongoose.isValidObjectId(bidId)) {
       await session.abortTransaction();
       session.endSession();
@@ -175,7 +165,6 @@ export const hireBid = async (req, res) => {
       });
     }
 
-    // 2. Fetch bid with session lock
     const bid = await Bid.findById(bidId)
       .populate("gigId")
       .populate("freelancerId", "email username fullName")
@@ -222,7 +211,6 @@ export const hireBid = async (req, res) => {
         message: `This bid has already been ${bid.status}`,
       });
     }
-    // Fetch other pending bids (to notify rejected freelancers later)
     const pendingBids = await Bid.find({
       gigId: gig._id,
       _id: { $ne: bid._id },
@@ -231,14 +219,12 @@ export const hireBid = async (req, res) => {
       .populate("freelancerId", "email username fullName")
       .session(session);
 
-    // 7. Perform state changes within transaction
     gig.status = "assigned";
     await gig.save({ session });
 
     bid.status = "hired";
     await bid.save({ session });
 
-    // Reject all other pending bids for this gig
     const rejectionResult = await Bid.updateMany(
       {
         gigId: gig._id,
@@ -251,12 +237,9 @@ export const hireBid = async (req, res) => {
       { session }
     );
 
-    // 8. Commit transaction
     await session.commitTransaction();
     session.endSession();
 
-    // 9. Publish hire event (non-blocking, fire-and-forget)
-    // Prepare rejected bidders list for notification consumer
     const rejectedBidders = (pendingBids || []).map((b) => ({
       bidId: b._id,
       price: b.price,
@@ -295,10 +278,8 @@ export const hireBid = async (req, res) => {
       rejectedBidders,
     }).catch((err) => console.error("Failed to publish hire event:", err));
 
-    // Real-time socket notifications
     try {
       const io = getIo();
-      // Notify hired freelancer
       const freelancerIdStr = bid.freelancerId._id?.toString() || bid.freelancerId.toString();
       const freelancerSocketId = userSockets.get(freelancerIdStr);
       if (io && freelancerSocketId) {
@@ -309,7 +290,6 @@ export const hireBid = async (req, res) => {
         });
       }
 
-      // Notify rejected bidders
       if (Array.isArray(rejectedBidders) && rejectedBidders.length > 0) {
         for (const rb of rejectedBidders) {
           const rid = rb.freelancer?.id || rb.freelancer?.id?._id;
@@ -329,14 +309,12 @@ export const hireBid = async (req, res) => {
       console.error('Socket notify error:', err);
     }
 
-    // 10. Success response
     return res.status(200).json({
       message: "Freelancer hired successfully",
       bid,
       rejectedBidsCount: rejectionResult.modifiedCount,
     });
   } catch (error) {
-    // Rollback on error
     await session.abortTransaction();
     session.endSession();
 
@@ -346,7 +324,6 @@ export const hireBid = async (req, res) => {
     });
   }
 };
-
 
 export const getMyBids = async (req, res) => {
   try {
