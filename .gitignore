@@ -2,11 +2,7 @@
 node_modules/
 package-lock.json
 yarn.lock
-
-# Environment Variables
-.env
-.env.local
-.env.production
+pnpm-lock.yaml
 
 # Logs
 logs/
@@ -14,6 +10,14 @@ logs/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Environment Variables
+.env
+.env.local
+.env.production
+*.local
 
 # OS Files
 .DS_Store
@@ -21,13 +25,20 @@ Thumbs.db
 
 # IDE
 .vscode/
+!.vscode/extensions.json
 .idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
 *.swp
 *.swo
 *~
 
 # Build outputs
 dist/
+dist-ssr/
 build/
 
 # Test coverage
