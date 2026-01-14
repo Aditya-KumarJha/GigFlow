@@ -196,7 +196,7 @@ const GigDetail = () => {
 
     setSubmitting(true);
     try {
-      await dispatch(
+      const payload = await dispatch(
         submitBid({
           gigId: id,
           message: bidMessage.trim(),
@@ -204,8 +204,11 @@ const GigDetail = () => {
         })
       ).unwrap();
 
+      // Use the bid returned from the thunk so we have the real `_id`
+      const bidResult = (payload && (payload.bid || payload)) || null;
+
       toast.success("Bid submitted");
-      setUserBid({
+      setUserBid(bidResult ? bidResult : {
         price: Number(bidPrice),
         message: bidMessage.trim(),
         status: "pending",
