@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { fetchGigs } from "../store/gigsSlice";
 import GigCard from "../components/gig/GigCard";
 import { toast } from 'react-toastify';
+import Footer from "../components/layout/Footer";
 
 const BrowseGigs = () => {
   const dispatch = useDispatch();
@@ -166,6 +167,8 @@ const BrowseGigs = () => {
           </div>
         </div>
       </main>
+
+      <Footer />
     </div>
   );
 };

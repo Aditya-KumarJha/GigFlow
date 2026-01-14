@@ -1,7 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import api from '../utils/api';
 import { toast } from 'react-toastify';
 import { motion } from 'framer-motion';
+import Header from '../components/layout/Header';
+import Footer from '../components/layout/Footer';
 
 const UpdateProfile = () => {
   const [loading, setLoading] = useState(true);
@@ -14,6 +16,9 @@ const UpdateProfile = () => {
     currentPassword: '',
     newPassword: '',
   });
+
+  const [initialForm, setInitialForm] = useState(null);
+  const [initialAvatar, setInitialAvatar] = useState(null);
 
   const [avatar, setAvatar] = useState('');
   const [avatarFile, setAvatarFile] = useState(null);
@@ -40,7 +45,17 @@ const UpdateProfile = () => {
           newPassword: '',
         });
 
+        // store initial values so we can detect changes
+        setInitialForm({
+          username: u.username || '',
+          firstName: fullName.firstName || '',
+          lastName: fullName.lastName || '',
+          currentPassword: '',
+          newPassword: '',
+        });
+
         setAvatar(u.profilePic || '');
+        setInitialAvatar(u.profilePic || '');
         setProvider(u.provider || 'email');
 
         console.debug('[UpdateProfile] State initialized:', {
@@ -62,6 +77,23 @@ const UpdateProfile = () => {
   const handleChange = (e) => {
     setForm((s) => ({ ...s, [e.target.name]: e.target.value }));
   };
+
+  const isChanged = useMemo(() => {
+    if (!initialForm) return false;
+
+    // if password change fields set -> changed
+    if (form.currentPassword || form.newPassword) return true;
+
+    // check simple string fields
+    if ((form.username || '') !== (initialForm.username || '')) return true;
+    if ((form.firstName || '') !== (initialForm.firstName || '')) return true;
+    if ((form.lastName || '') !== (initialForm.lastName || '')) return true;
+
+    // avatar file selected means change
+    if (avatarFile) return true;
+
+    return false;
+  }, [form, avatarFile, initialForm, initialAvatar]);
 
   const handleAvatarChange = (e) => {
     const file = e.target.files?.[0];
@@ -98,6 +130,17 @@ const UpdateProfile = () => {
 
     if (form.newPassword && form.newPassword.length < 6) {
       toast.error('New password must be at least 6 characters');
+      return;
+    }
+
+    // Validate full name fields - do not allow empty first/last name when user edits
+    if (form.firstName !== undefined && String(form.firstName).trim() === '') {
+      toast.error("First name can't be empty");
+      return;
+    }
+
+    if (form.lastName !== undefined && String(form.lastName).trim() === '') {
+      toast.error("Last name can't be empty");
       return;
     }
 
@@ -158,12 +201,14 @@ const UpdateProfile = () => {
   };
 
   return (
+    <>
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       className="max-w-4xl mx-auto px-4 py-10"
     >
-      <h2 className="text-3xl font-bold mb-8">Profile Settings</h2>
+      <Header />
+      <h2 className="mt-20 text-3xl font-bold mb-8">Profile Settings</h2>
 
       <div className="bg-white border rounded-2xl shadow-sm p-6">
         {loading ? (
@@ -258,7 +303,7 @@ const UpdateProfile = () => {
               <div className="flex justify-end">
                 <button
                   type="submit"
-                  disabled={saving}
+                  disabled={!isChanged || saving}
                   className="px-6 py-2.5 rounded-lg bg-black text-white text-sm disabled:opacity-50"
                 >
                   {saving ? 'Saving...' : 'Save Changes'}
@@ -268,7 +313,10 @@ const UpdateProfile = () => {
           </form>
         )}
       </div>
+
     </motion.div>
+    <Footer />
+    </>
   );
 };
 

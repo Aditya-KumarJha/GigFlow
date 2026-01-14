@@ -9,7 +9,6 @@ import GigDetail from './pages/GigDetail';
 import UpdateProfile from './pages/UpdateProfile';
 import MyGigs from './pages/MyGigs';
 import MyBids from './pages/MyBids';
-import Dashboard from './pages/Dashboard';
 import Notifications from './pages/Notifications';
 import { useSelector, useDispatch } from 'react-redux'
 import { verifySession } from './store/authSlice'
@@ -123,7 +122,6 @@ const App = () => {
         <Route path="/update-profile" element={<UpdateProfile />} />
         <Route path="/my-gigs" element={<MyGigs />} />
         <Route path="/my-bids" element={<MyBids />} />
-        <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/notifications" element={<Notifications />} />
         <Route path="/signup" element={<SignupPage />} />
         <Route path="/login" element={<LoginPage />} />

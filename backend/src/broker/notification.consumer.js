@@ -432,7 +432,6 @@ export const startNotificationConsumers = async () => {
     const freelancerName = getCustomerName(data.freelancer);
     const gigTitle = data.gig?.title || "your gig";
 
-    // Email to freelancer confirming their update
     const freelancerHtml = emailLayout({
       title: "Your bid was updated ✏️",
       body: `
@@ -461,7 +460,6 @@ export const startNotificationConsumers = async () => {
       console.error('Failed to send bid updated email to freelancer:', err);
     }
 
-    // Notify gig owner about the updated bid if owner info is present
     if (data.gigOwner && data.gigOwner.email) {
       const ownerName = getCustomerName(data.gigOwner);
       const ownerHtml = emailLayout({
@@ -497,7 +495,6 @@ export const startNotificationConsumers = async () => {
     const freelancerName = getCustomerName(data.freelancer);
     const gigTitle = data.gig?.title || "the gig";
 
-    // Confirmation to freelancer
     const freelancerHtml = emailLayout({
       title: "Your bid was withdrawn 🗑️",
       body: `
@@ -521,7 +518,6 @@ export const startNotificationConsumers = async () => {
       console.error('Failed to send bid deleted email to freelancer:', err);
     }
 
-    // Notify gig owner about withdrawn bid if owner info present
     if (data.gigOwner && data.gigOwner.email) {
       const ownerName = getCustomerName(data.gigOwner);
       const ownerHtml = emailLayout({

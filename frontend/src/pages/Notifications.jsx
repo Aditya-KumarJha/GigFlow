@@ -4,6 +4,7 @@ import Header from '../components/layout/Header';
 import { toast } from 'react-toastify';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
+import Footer from '../components/layout/Footer';
 
 const Notifications = () => {
   const [notifications, setNotifications] = useState([]);
@@ -180,6 +181,8 @@ const Notifications = () => {
           </div>
         )}
       </main>
+
+      <Footer />
     </div>
   );
 };

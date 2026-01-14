@@ -3,6 +3,7 @@ import api from '../utils/api';
 import { Link } from 'react-router-dom';
 import Header from '../components/layout/Header';
 import { toast } from 'react-toastify';
+import Footer from '../components/layout/Footer';
 
 const statusStyles = {
   pending: 'bg-yellow-100 text-yellow-700',
@@ -79,6 +80,7 @@ const MyBids = () => {
   };
 
   return (
+    <>
     <div className="max-w-5xl mx-auto px-4 py-8">
       <Header />
       <h2 className="mt-20 text-3xl font-bold mb-6">My Bids</h2>
@@ -231,6 +233,8 @@ const MyBids = () => {
         </div>
       )}
     </div>
+    <Footer />
+    </>
   );
 };
 

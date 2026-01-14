@@ -21,7 +21,6 @@ transporter.verify((error, success) => {
 
 export const sendEmail = async ({ to, subject, text, html }) => {
   try {
-    // Validate recipients before attempting to send. Nodemailer throws if no recipients are defined.
     const noRecipients =
       !to ||
       (Array.isArray(to) && to.length === 0) ||

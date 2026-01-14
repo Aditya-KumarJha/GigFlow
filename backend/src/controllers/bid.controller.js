@@ -21,7 +21,6 @@ export const submitBid = async (req, res) => {
       });
     }
 
-    // Ensure the request is authenticated and `req.user` is available
     if (!req.user || !req.user._id) {
       return res.status(401).json({
         message: "Authentication required",
@@ -36,7 +35,6 @@ export const submitBid = async (req, res) => {
       });
     }
 
-    // Safely compare owner id and authenticated user id
     const ownerIdStr = gig.ownerId?._id?.toString() || (gig.ownerId ? gig.ownerId.toString() : null);
     const userIdStr = req.user._id.toString();
     if (ownerIdStr && ownerIdStr === userIdStr) {
@@ -73,7 +71,6 @@ export const submitBid = async (req, res) => {
     await bid.populate("freelancerId", "username fullName profilePic");
     await bid.populate("gigId", "title budget");
 
-    // Create notification for gig owner
     try {
       const ownerId = gig.ownerId?._id || gig.ownerId;
       if (ownerId) {
@@ -92,7 +89,6 @@ export const submitBid = async (req, res) => {
           },
         });
 
-        // Emit socket event
         emitToUser(ownerId, 'new_bid', {
           message: `${req.user.username || 'A freelancer'} placed a bid on "${gig.title}"`,
           gig: { id: gig._id, title: gig.title },
@@ -280,7 +276,6 @@ export const hireBid = async (req, res) => {
 
     await session.commitTransaction();
     session.endSession();
-    // Create notification for hired freelancer and emit socket event
     try {
       await Notification.create({
         userId: bid.freelancerId._id,
@@ -304,7 +299,6 @@ export const hireBid = async (req, res) => {
       console.error('Failed to create hired notification or emit socket:', err);
     }
 
-    // Create notifications and emit events for rejected bidders
     if (Array.isArray(pendingBids) && pendingBids.length > 0) {
       try {
         const notificationsToCreate = pendingBids
@@ -385,7 +379,10 @@ export const hireBid = async (req, res) => {
       rejectedBidsCount: rejectionResult.modifiedCount,
     });
   } catch (error) {
-    await session.abortTransaction();
+    // Only abort if transaction is still active
+    if (session.inTransaction()) {
+      await session.abortTransaction();
+    }
     session.endSession();
 
     console.error("Hire bid error:", error);

@@ -6,6 +6,7 @@ import { fetchBidsForGig, submitBid, hireBid } from "../store/bidsSlice";
 import api from "../utils/api";
 import { toast } from "react-toastify";
 import { initSocket } from "../utils/socket";
+import Footer from "../components/layout/Footer";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
@@ -391,6 +392,8 @@ const GigDetail = () => {
           </div>
         </div>
       </main>
+
+      <Footer />
     </div>
   );
 };

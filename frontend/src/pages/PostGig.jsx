@@ -5,6 +5,7 @@ import { addLocalGig, createGig } from "../store/gigsSlice";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { useSearchParams } from "react-router-dom";
+import Footer from "../components/layout/Footer";
 
 const PostGig = () => {
   const dispatch = useDispatch();
@@ -271,6 +272,8 @@ const PostGig = () => {
           </div>
         </form>
       </main>
+
+      <Footer />
     </div>
   );
 };

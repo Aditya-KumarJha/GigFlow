@@ -5,6 +5,9 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import Header from '../components/layout/Header';
 import { toast } from 'react-toastify';
+import Footer from '../components/layout/Footer';
+import { useSelector } from 'react-redux';
+import InfiniteScroll from 'react-infinite-scroll-component';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -26,23 +29,44 @@ const cardVariants = {
 const MyGigs = () => {
   const [gigs, setGigs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const auth = useSelector((s) => s.auth);
+  const currentUserId = auth.user?._id || auth.user?.id || null;
+  const LIMIT = 9;
 
-  const fetchMyGigs = () => {
+  const fetchMyGigs = async (p = 1, append = false) => {
     setLoading(true);
-    api.get('/api/gigs?limit=50')
-      .then(({ data }) => {
-        const list = (data.gigs || []).filter(g => g.editable);
+    try {
+      const { data } = await api.get(`/api/gigs?limit=${LIMIT}&page=${p}&status=all`);
+      const all = (data.gigs || []);
+      const meta = data.meta || {};
+
+      const list = all.filter(g => {
+        const ownerId = g.ownerId?._id || g.ownerId;
+        const assignedId = g.assignedFreelancer?._id || g.assignedFreelancer;
+        return (currentUserId && String(ownerId) === String(currentUserId)) || (currentUserId && String(assignedId) === String(currentUserId));
+      });
+
+      if (append) {
+        setGigs(prev => [...prev, ...list]);
+      } else {
         setGigs(list);
-      })
-      .catch(err => {
-        toast.error(err?.response?.data?.message || 'Failed to load gigs');
-      })
-      .finally(() => setLoading(false));
+      }
+
+      setPage(p);
+      setHasMore(Boolean(meta.page && meta.totalPages && meta.page < meta.totalPages));
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to load gigs');
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
-    fetchMyGigs();
-  }, []);
+    // fetch first page when component mounts or when user changes
+    fetchMyGigs(1, false);
+  }, [currentUserId]);
 
   const handleDelete = async (gigId, gigTitle) => {
     if (!window.confirm(`Are you sure you want to delete "${gigTitle}"?`)) return;
@@ -50,13 +74,21 @@ const MyGigs = () => {
     try {
       await api.delete(`/api/gigs/${gigId}`);
       toast.success('Gig deleted successfully');
-      fetchMyGigs();
+      // refresh from first page
+      setPage(1);
+      fetchMyGigs(1, false);
     } catch (err) {
       toast.error(err?.response?.data?.message || 'Failed to delete gig');
     }
   };
 
+  const loadMore = () => {
+    if (!hasMore) return;
+    fetchMyGigs(page + 1, true);
+  };
+
   return (
+    <>
     <motion.div
       className="max-w-6xl mx-auto px-4 py-8"
       initial={{ opacity: 0 }}
@@ -105,24 +137,31 @@ const MyGigs = () => {
       )}
 
       {!loading && gigs.length > 0 && (
-        <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
+        <InfiniteScroll
+          dataLength={gigs.length}
+          next={loadMore}
+          hasMore={hasMore}
+          loader={<div className="text-center py-6 text-zinc-500">Loading more...</div>}
+          className=""
         >
-          {gigs.map(gig => (
-            <motion.div
-              key={gig._id}
-              variants={cardVariants}
-              className="rounded-2xl"
-            >
-              <GigCard gig={gig} onDelete={handleDelete} />
-            </motion.div>
-          ))}
-        </motion.div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {gigs.map(gig => (
+              <motion.div
+                key={gig._id}
+                variants={cardVariants}
+                initial="hidden"
+                animate="visible"
+                className="rounded-2xl"
+              >
+                <GigCard gig={gig} onDelete={handleDelete} />
+              </motion.div>
+            ))}
+          </div>
+        </InfiniteScroll>
       )}
     </motion.div>
+    <Footer />
+    </>
   );
 };
 

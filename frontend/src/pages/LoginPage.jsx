@@ -6,6 +6,7 @@ import ForgotPassword from "../components/auth/ForgotPassword";
 import OtpForm from "../components/auth/OTPForm";
 import { ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import Header from "../components/layout/Header";
 
 const LoginPage = () => {
   const [otpStep, setOtpStep] = useState(false);

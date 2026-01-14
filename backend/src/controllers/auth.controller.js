@@ -4,7 +4,6 @@ import userModel from "../models/user.model.js";
 import { generateOTP } from "../utils/generate.otp.js";
 import { publishToQueue } from "../broker/broker.js";
 import { uploadImage } from "../services/imagekit.service.js";
-import fs from "fs/promises";
 
 export const registerUser = async (req, res) => {
   try {
@@ -158,8 +157,7 @@ export const verifyRegisterOTP = async (req, res) => {
         email: user.email,
         username: user.username,
         fullName: user.fullName,
-      },
-      token, 
+      }
     });
 
   } catch (error) {
@@ -368,8 +366,7 @@ export const verifyLoginOTP = async (req, res) => {
         email: user.email,
         username: user.username,
         fullName: user.fullName,
-      },
-      token, 
+      }
     });
 
   } catch (error) {
@@ -601,59 +598,36 @@ export const getCurrentUser = async (req, res) => {
 
 export const updateProfile = async (req, res) => {
   try {
-    console.debug('[updateProfile] START', {
-      method: req.method,
-      path: req.path,
-      contentType: req.headers['content-type'],
-      bodyKeys: Object.keys(req.body || {}),
-      hasFile: !!req.file,
-    });
-
-    if (req.file) {
-      console.debug('[updateProfile] FILE RECEIVED', {
-        fieldname: req.file.fieldname,
-        originalname: req.file.originalname,
-        mimetype: req.file.mimetype,
-        size: req.file.size,
-        hasBuffer: !!req.file.buffer,
-      });
-    }
-
     const userId = req.user._id;
     const { username, fullName, currentPassword, newPassword } = req.body;
 
     const user = await userModel.findById(userId).select('+password');
     if (!user) {
-      console.warn('[updateProfile] User not found');
       return res.status(404).json({ message: 'User not found' });
     }
 
-    /* ---------- Username ---------- */
-    if (username !== undefined && username.trim() !== '' && username !== user.username) {
-      console.debug('[updateProfile] Updating username', {
-        from: user.username,
-        to: username,
-      });
+    if (username !== undefined) {
+      const raw = typeof username === 'string' ? username : String(username);
+      const trimmed = raw.trim();
 
-      const existingUser = await userModel.findOne({ username: username.trim() });
-      if (existingUser && existingUser._id.toString() !== userId.toString()) {
-        return res.status(400).json({ message: 'Username already taken' });
+      if (trimmed === '') {
+        user.username = '';
+      } else if (trimmed !== user.username) {
+        const existingUser = await userModel.findOne({ username: trimmed });
+        if (existingUser && existingUser._id.toString() !== userId.toString()) {
+          return res.status(400).json({ message: 'Username already taken' });
+        }
+        user.username = trimmed;
       }
-
-      user.username = username.trim();
     }
 
-    /* ---------- Full Name ---------- */
     if (fullName !== undefined) {
-      console.debug('[updateProfile] Raw fullName:', fullName);
-
       let parsedFullName = fullName;
+
       if (typeof fullName === 'string') {
         try {
           parsedFullName = JSON.parse(fullName);
         } catch {
-          // If it's a simple string, skip it
-          console.warn('[updateProfile] Could not parse fullName, skipping');
           parsedFullName = null;
         }
       }
@@ -667,12 +641,9 @@ export const updateProfile = async (req, res) => {
         if (parsedFullName.lastName !== undefined) {
           user.fullName.lastName = parsedFullName.lastName;
         }
-
-        console.debug('[updateProfile] Updated fullName:', user.fullName);
       }
     }
 
-    /* ---------- Password ---------- */
     if ((currentPassword && !newPassword) || (!currentPassword && newPassword)) {
       return res.status(400).json({
         message: 'Both current and new password are required',
@@ -680,8 +651,6 @@ export const updateProfile = async (req, res) => {
     }
 
     if (currentPassword && newPassword) {
-      console.debug('[updateProfile] Password change requested');
-
       if (user.provider !== 'email') {
         return res.status(400).json({
           message: 'Password cannot be changed for OAuth accounts',
@@ -702,33 +671,14 @@ export const updateProfile = async (req, res) => {
       user.password = await bcrypt.hash(newPassword, 12);
     }
 
-    /* ---------- Profile Picture ---------- */
     if (req.file && req.file.size > 0) {
-      try {
-        let buffer = req.file.buffer;
-        const uploaded = await uploadImage({ buffer });
-
-        console.debug('[updateProfile] uploadImage result:', uploaded);
-
-        if (uploaded?.url) {
-          user.profilePic = uploaded.url;
-        } else {
-          console.warn('[updateProfile] uploadImage returned no URL');
-        }
-      } catch (err) {
-        console.error('[updateProfile] Image upload failed:', err);
-        return res.status(500).json({
-          message: 'Failed to upload profile picture',
-        });
+      const uploaded = await uploadImage({ buffer: req.file.buffer });
+      if (uploaded?.url) {
+        user.profilePic = uploaded.url;
       }
     }
 
     await user.save();
-
-    console.debug('[updateProfile] SAVE SUCCESS', {
-      userId: user._id,
-      profilePic: user.profilePic,
-    });
 
     return res.status(200).json({
       message: 'Profile updated successfully',
@@ -742,9 +692,7 @@ export const updateProfile = async (req, res) => {
         isVerified: user.isVerified,
       },
     });
-  } catch (error) {
-    console.error('[updateProfile] FATAL ERROR:', error);
+  } catch {
     return res.status(500).json({ message: 'Failed to update profile' });
   }
 };
-

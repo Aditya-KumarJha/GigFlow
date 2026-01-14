@@ -29,12 +29,24 @@ export default function HowItWorks() {
   return (
     <section className="w-full pt-12 pb-24 bg-white">
       <div className="max-w-8xl mx-auto px-6 relative">
-        <h2 className="text-center text-4xl md:text-5xl font-extrabold mb-20 tracking-tight">
+        <motion.h2
+          initial={{ opacity: 0, y: 12 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+          className="text-center text-4xl md:text-5xl font-extrabold mb-20 tracking-tight"
+        >
           How <span className="text-[#FF4801]">GigFlow</span> Works
-        </h2>
+        </motion.h2>
 
         {/* Connector line (tablet + desktop only) */}
-        <div className="hidden lg:block absolute top-[58%] left-0 w-full border-t-2 border-dashed border-zinc-200" />
+        <motion.div
+          initial={{ scaleX: 0 }}
+          whileInView={{ scaleX: 1 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.7 }}
+          className="hidden lg:block absolute top-[58%] left-0 w-full border-t-2 border-dashed border-zinc-200 origin-left"
+        />
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 relative">
           {steps.map((step, idx) => (

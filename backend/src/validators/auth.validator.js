@@ -226,43 +226,85 @@ export const resetPasswordValidations = [
 ];
 
 export const updateProfileValidations = [
-    body("username")
-        .optional()
-        .isString()
-        .withMessage("Username must be a string")
-        .isLength({ min: 3 })
-        .withMessage("Username must be at least 3 characters long")
-        .trim(),
-    body("fullName")
+  body('username')
         .optional()
         .custom((value) => {
-            if (typeof value !== 'object' || value === null) {
-                throw new Error("Full name must be an object with firstName and lastName");
+            if (value === '') return true;
+            if (typeof value !== 'string') {
+                throw new Error('Username must be a string');
             }
-            if (value.firstName && (typeof value.firstName !== 'string' || value.firstName.trim().length === 0)) {
-                throw new Error("firstName must be a non-empty string");
-            }
-            if (value.lastName && (typeof value.lastName !== 'string' || value.lastName.trim().length === 0)) {
-                throw new Error("lastName must be a non-empty string");
+            const trimmed = value.trim();
+            if (trimmed.length > 0 && trimmed.length < 3) {
+                throw new Error('Username must be at least 3 characters long');
             }
             return true;
         }),
-    body("currentPassword")
-        .optional()
-        .isString()
-        .withMessage("Current password must be a string"),
-    body("newPassword")
-        .optional()
-        .isLength({ min: 6 })
-        .withMessage("New password must be at least 6 characters long")
-        .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
-        .withMessage("New password must contain at least one uppercase letter, one lowercase letter, and one number"),
-    (req, res, next) => {
-        if ((req.body.currentPassword && !req.body.newPassword) || (!req.body.currentPassword && req.body.newPassword)) {
-            return res.status(400).json({ 
-                errors: [{ msg: 'Both currentPassword and newPassword are required to change password' }] 
-            });
+
+  body('fullName')
+    .optional()
+    .custom((value) => {
+      let parsed = value;
+
+      if (typeof value === 'string') {
+        if (value.trim() === '') return true; 
+        try {
+          parsed = JSON.parse(value);
+        } catch {
+          throw new Error('fullName must be a valid JSON string');
         }
-        respondWithValidationErrors(req, res, next);
-    },
+      }
+
+      if (typeof parsed !== 'object' || parsed === null) {
+        throw new Error('fullName must be an object');
+      }
+
+      if (
+        parsed.firstName !== undefined &&
+        (typeof parsed.firstName !== 'string' ||
+          parsed.firstName.trim().length === 0)
+      ) {
+        throw new Error('firstName must be a non-empty string');
+      }
+
+      if (
+        parsed.lastName !== undefined &&
+        (typeof parsed.lastName !== 'string' ||
+          parsed.lastName.trim().length === 0)
+      ) {
+        throw new Error('lastName must be a non-empty string');
+      }
+
+      return true;
+    }),
+
+  body('currentPassword')
+    .optional()
+    .isString()
+    .withMessage('Current password must be a string'),
+
+  body('newPassword')
+    .optional()
+    .isLength({ min: 6 })
+    .withMessage('New password must be at least 6 characters long')
+    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
+    .withMessage(
+      'New password must contain at least one uppercase letter, one lowercase letter, and one number'
+    ),
+
+  (req, res, next) => {
+    if (
+      (req.body.currentPassword && !req.body.newPassword) ||
+      (!req.body.currentPassword && req.body.newPassword)
+    ) {
+      return res.status(400).json({
+        errors: [
+          {
+            msg: 'Both currentPassword and newPassword are required to change password',
+          },
+        ],
+      });
+    }
+    respondWithValidationErrors(req, res, next);
+  },
 ];
+

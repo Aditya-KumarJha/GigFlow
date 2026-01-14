@@ -1,6 +1,8 @@
 import React from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
+import { useEffect, useState } from "react";
+import api from "../../utils/api";
 import { Pencil, IndianRupee, Trash2 } from "lucide-react";
 
 const truncate = (s, n = 120) =>
@@ -33,6 +35,16 @@ const GigCard = ({ gig, onDelete }) => {
       formatFullName(gig.assignedFreelancer.fullName)
     : null;
 
+  const currentUserId = auth.user?._id || auth.user?.id || null;
+  const isOwner = currentUserId && String(gig.ownerId?._id || gig.ownerId) === String(currentUserId);
+
+  const [userBid, setUserBid] = useState(null);
+
+  // Simple in-memory cache for my-bids to avoid multiple requests across cards
+  // keyed by user id
+  const root = globalThis || window;
+  root.__gigflow_my_bids_cache = root.__gigflow_my_bids_cache || { promise: null, ts: 0, data: null };
+
   const handleEdit = (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -55,6 +67,40 @@ const GigCard = ({ gig, onDelete }) => {
     }
     navigate(`/gigs/${gig._id}`);
   };
+
+  useEffect(() => {
+    let cancelled = false;
+    const fetchMyBids = async () => {
+      if (!isAuthenticated) return;
+      // Reuse cache if recent
+      const cache = root.__gigflow_my_bids_cache;
+      const now = Date.now();
+      if (cache.data && (now - cache.ts) < 30_000) {
+        const found = (cache.data || []).find((b) => String(b.gigId?._id || b.gigId) === String(gig._id));
+        if (!cancelled) setUserBid(found || null);
+        return;
+      }
+
+      if (!cache.promise) {
+        cache.promise = api.get('/api/bids/my-bids').then(r => r.data.bids || []).catch(() => []);
+      }
+
+      try {
+        const bids = await cache.promise;
+        cache.data = bids;
+        cache.ts = Date.now();
+        cache.promise = null;
+        const found = (bids || []).find((b) => String(b.gigId?._id || b.gigId) === String(gig._id));
+        if (!cancelled) setUserBid(found || null);
+      } catch (err) {
+        cache.promise = null;
+        if (!cancelled) setUserBid(null);
+      }
+    };
+
+    fetchMyBids();
+    return () => (cancelled = true);
+  }, [isAuthenticated, gig._id]);
 
   return (
     <Link
@@ -117,6 +163,25 @@ const GigCard = ({ gig, onDelete }) => {
                 <Trash2 size={16} />
                 Delete
               </button>
+            </div>
+          ) : userBid && !isOwner ? (
+            <div
+              onClick={handlePlaceBid}
+              className="border rounded-xl p-3 bg-emerald-50 cursor-pointer w-full"
+            >
+              <div className="text-sm text-zinc-500">Your Bid</div>
+              <div className="text-lg font-bold mt-1">₹{userBid.price}</div>
+              {userBid.message && (
+                <p className="text-sm text-zinc-600 mt-2 truncate">{userBid.message}</p>
+              )}
+              <div className="mt-3">
+                <span className={`inline-block text-xs px-2 py-1 rounded-full capitalize ${
+                  userBid.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                  userBid.status === 'hired' ? 'bg-emerald-100 text-emerald-700' :
+                  userBid.status === 'rejected' ? 'bg-red-100 text-red-700' :
+                  'bg-zinc-100 text-zinc-600'
+                }`}>{userBid.status || 'pending'}</span>
+              </div>
             </div>
           ) : (
             <button
