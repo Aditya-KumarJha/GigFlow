@@ -10,7 +10,7 @@ const checkCookie = () => {
 };
 
 const initialState = {
-  isAuthenticated: Boolean(localStorage.getItem('authToken')) || checkCookie(),
+  isAuthenticated: checkCookie(),
   checked: false, 
   user: null,
 };
@@ -24,18 +24,14 @@ const authSlice = createSlice({
   name: 'auth',
   initialState,
   reducers: {
-    setAuthenticated(state, action) {
+    setAuthenticated(state) {
       state.isAuthenticated = true;
-      if (action.payload?.token) {
-        try { localStorage.setItem('authToken', action.payload.token); } catch(e) {}
-      }
     },
     setLoggedOut(state) {
       state.isAuthenticated = false;
-      try { localStorage.removeItem('authToken'); } catch(e) {}
     },
     initializeAuth(state) {
-      state.isAuthenticated = Boolean(localStorage.getItem('authToken')) || checkCookie();
+      state.isAuthenticated = checkCookie();
     }
   },
   extraReducers: (builder) => {
@@ -49,7 +45,7 @@ const authSlice = createSlice({
         state.user = action.payload?.user || action.payload || null;
       })
       .addCase(verifySession.rejected, (state, action) => {
-        state.isAuthenticated = Boolean(localStorage.getItem('authToken')) || checkCookie();
+        state.isAuthenticated = checkCookie();
         state.checked = true;
         state.user = null;
       });

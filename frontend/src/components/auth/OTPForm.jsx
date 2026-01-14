@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../utils/api";
 import { useDispatch } from 'react-redux'
-import { setAuthenticated } from '../../store/authSlice'
+import { setAuthenticated, verifySession } from '../../store/authSlice'
 import { toast } from 'react-toastify'
 
 const OtpForm = ({ email, context, onVerified }) => {
@@ -91,18 +91,20 @@ const OtpForm = ({ email, context, onVerified }) => {
           onVerified(res.data);
         }
       } else {
-        if (res.data?.token) {
-          dispatch(setAuthenticated({ token: res.data.token }));
-        }
+        // Token is set as HttpOnly cookie by backend, no need to check res.data.token
+        // Update auth state and fetch user data
+        dispatch(setAuthenticated());
+        await dispatch(verifySession());
+        
         // Show appropriate toast after successful register or login
         if (context === 'register') {
-          toast.success('Signup successful');
+          toast.success('Signup successful! Welcome to GigFlow 🎉');
         } else if (context === 'login') {
-          toast.success('Login successful');
+          toast.success('Login successful! Welcome back 👋');
         }
 
-        // After successful register or login, redirect to home
-        navigate("/");
+        // After successful register or login, redirect to browse gigs
+        navigate("/gigs");
       }
     } catch (err) {
       const msg = err.response?.data?.message || "OTP verification failed.";
