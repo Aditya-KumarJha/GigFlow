@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Header from "../components/layout/Header";
 import { useDispatch, useSelector } from "react-redux";
 import { addLocalGig, createGig } from "../store/gigsSlice";
@@ -27,12 +27,19 @@ const PostGig = () => {
 
   const handleFiles = (e) => {
     const list = Array.from(e.target.files || []);
-    if (list.length + files.length + (existingImages.length || 0) > 3) return;
+    const totalNow = list.length + files.length + (existingImages.length || 0);
+    if (totalNow > 3) {
+      toast.error('Maximum 3 images allowed');
+      // clear input selection to avoid confusion
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
     const withPreview = list.map((f) => ({
       file: f,
       preview: URL.createObjectURL(f),
     }));
     setFiles((prev) => prev.concat(withPreview));
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const removeFile = (idx) => {
@@ -54,6 +61,8 @@ const PostGig = () => {
       return copy;
     });
   };
+
+  const fileInputRef = useRef(null);
 
   const onSubmit = async (e) => {
     e.preventDefault();
@@ -209,7 +218,18 @@ const PostGig = () => {
               Reference Images <span className="text-zinc-400">(max 3)</span>
             </label>
 
-            <label className="mt-3 flex items-center justify-center border-2 border-dashed border-zinc-300 rounded-xl py-8 cursor-pointer hover:border-[#FF4801] transition">
+            <label
+              className={`mt-3 flex items-center justify-center border-2 border-dashed rounded-xl py-8 cursor-pointer hover:border-[#FF4801] transition border-zinc-300`}
+              onClick={(e) => {
+                const totalNow = files.length + (existingImages.length || 0);
+                if (totalNow >= 3) {
+                  e.preventDefault();
+                  // don't open file picker; inform user
+                  toast.info('Maximum 3 images already added — remove one to add new');
+                  if (fileInputRef.current) fileInputRef.current.value = '';
+                }
+              }}
+            >
               <span className="text-zinc-500">
                 Click to upload images
               </span>
@@ -218,6 +238,7 @@ const PostGig = () => {
                 accept="image/*"
                 multiple
                 onChange={handleFiles}
+                ref={fileInputRef}
                 className="hidden"
               />
             </label>

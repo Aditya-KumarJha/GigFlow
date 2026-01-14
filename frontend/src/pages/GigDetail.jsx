@@ -38,6 +38,9 @@ const GigDetail = () => {
   const [bidPrice, setBidPrice] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [userBid, setUserBid] = useState(null);
+  const [editing, setEditing] = useState(false);
+  const [editPrice, setEditPrice] = useState('');
+  const [editMessage, setEditMessage] = useState('');
   const [selectedBidId, setSelectedBidId] = useState(null);
 
   const currentUserId = auth.user?._id || auth.user?.id || null;
@@ -346,21 +349,75 @@ const GigDetail = () => {
               <>
                 {userBid ? (
                   <div className="border rounded-xl p-4 bg-zinc-50">
-                    <div className="text-sm text-zinc-500">Your Bid</div>
-                    <div className="text-xl font-bold mt-1">
-                      ₹{userBid.price}
-                    </div>
-                    <p className="text-sm text-zinc-600 mt-2">
-                      {userBid.message}
-                    </p>
-                    <span className={`inline-block mt-3 px-3 py-1 text-xs rounded-full ${
-                      userBid.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                      userBid.status === 'hired' ? 'bg-emerald-100 text-emerald-700' :
-                      userBid.status === 'rejected' ? 'bg-red-100 text-red-700' :
-                      'bg-zinc-100 text-zinc-600'
-                    }`}>
-                      {userBid.status}
-                    </span>
+                    {!editing ? (
+                      <div>
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <div className="text-sm text-zinc-500">Your Bid</div>
+                            <div className="text-xl font-bold mt-1">₹{userBid.price}</div>
+                            <p className="text-sm text-zinc-600 mt-2">{userBid.message}</p>
+                            <span className={`inline-block mt-3 px-3 py-1 text-xs rounded-full ${
+                              userBid.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                              userBid.status === 'hired' ? 'bg-emerald-100 text-emerald-700' :
+                              userBid.status === 'rejected' ? 'bg-red-100 text-red-700' :
+                              'bg-zinc-100 text-zinc-600'
+                            }`}>{userBid.status}</span>
+                          </div>
+
+                          {userBid.status === 'pending' && (
+                            <div className="flex flex-col items-end gap-2 ml-4">
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setEditPrice(String(userBid.price || '')); setEditMessage(userBid.message || ''); setEditing(true); }}
+                                className="text-sm text-blue-600"
+                              >
+                                Edit
+                              </button>
+                              <button
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  if (!window.confirm('Delete your bid?')) return;
+                                  try {
+                                    await api.delete(`/api/bids/${userBid._id}`);
+                                    setUserBid(null);
+                                    toast.success('Bid deleted');
+                                  } catch (err) {
+                                    toast.error(err?.response?.data?.message || 'Failed to delete bid');
+                                  }
+                                }}
+                                className="text-sm text-red-600"
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      <form onSubmit={async (e) => {
+                        e.preventDefault();
+                        if (String(editMessage).trim().length < 5) {
+                          toast.error('Message must be at least 5 characters');
+                          return;
+                        }
+                        try {
+                          const res = await api.patch(`/api/bids/${userBid._id}`, { price: Number(editPrice || 0), message: String(editMessage).trim() });
+                          const updated = res.data.bid || res.data;
+                          setUserBid((prev) => ({ ...(prev || {}), ...updated }));
+                          toast.success('Bid updated');
+                          setEditing(false);
+                        } catch (err) {
+                          toast.error(err?.response?.data?.message || 'Failed to update bid');
+                        }
+                      }} className="space-y-3">
+                        <div className="text-sm text-zinc-500">Edit Bid</div>
+                        <input type="number" value={editPrice} onChange={(e) => setEditPrice(e.target.value)} className="w-full rounded-lg border px-3 py-2" min="0" />
+                        <textarea value={editMessage} onChange={(e) => setEditMessage(e.target.value)} className="w-full rounded-lg border px-3 py-2" rows={3} />
+                        <div className="flex gap-2 justify-end">
+                          <button onClick={(ev) => { ev.preventDefault(); ev.stopPropagation(); setEditing(false); }} className="px-3 py-2 rounded-lg bg-gray-200">Cancel</button>
+                          <button type="submit" className="px-3 py-2 rounded-lg bg-green-500 text-white">Save</button>
+                        </div>
+                      </form>
+                    )}
                   </div>
                 ) : (
                   <form onSubmit={handleSubmitBid} className="space-y-4">

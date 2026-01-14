@@ -91,8 +91,6 @@ const OtpForm = ({ email, context, onVerified }) => {
           onVerified(res.data);
         }
       } else {
-        // Token is set as HttpOnly cookie by backend, no need to check res.data.token
-        // Update auth state and fetch user data
         dispatch(setAuthenticated());
         await dispatch(verifySession());
         
@@ -104,7 +102,7 @@ const OtpForm = ({ email, context, onVerified }) => {
         }
 
         // After successful register or login, redirect to browse gigs
-        navigate("/gigs");
+        navigate("/");
       }
     } catch (err) {
       const msg = err.response?.data?.message || "OTP verification failed.";

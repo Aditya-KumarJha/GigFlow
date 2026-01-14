@@ -149,11 +149,6 @@ await session.commitTransaction();
 | **Lottie React** | Animated illustrations |
 | **Lucide React** | Icon library |
 
-### DevOps & Tools
-- Docker Compose for MongoDB replica set
-- Git for version control
-- ESLint for code quality
-- MongoDB Memory Server for testing
 
 ## 🏗 Architecture
 
@@ -333,17 +328,7 @@ cd GigFlow
 
 ### 2. Set Up MongoDB Replica Set (Required for Transactions)
 
-#### Option A: Using Docker (Recommended)
-
-```bash
-# Start MongoDB in replica set mode
-docker-compose -f docker-compose.mongo.yml up -d
-
-# Initialize the replica set
-./scripts/init-mongo-replica.sh
-```
-
-#### Option B: Manual Setup
+#### Option A: Manual Setup
 
 Follow MongoDB documentation to set up a replica set manually.
 
@@ -455,17 +440,3 @@ Screenshots (examples):
 ![Demo 2](frontend/public/demo/Demo-2.png)
 ![Demo 3](frontend/public/demo/Demo-3.png)
 ![Demo 4](frontend/public/demo/Demo-4.png)
-
-## Important Notes / Missing items & recommendations
-- Transactions: `hire` uses MongoDB transactions. MongoDB transactions require a replica set (even a single-node replica set) — ensure production or local dev DB runs as a replica set. If a replica set is not available, the code will throw or fall back; consider a conditional `findOneAndUpdate` pattern as fallback.
-- Env/example: See `.env.example` in repo root for required vars.
-- Tests: There are no automated tests included. Adding unit/integration tests for hiring and bid uniqueness will strengthen the submission.
-- Deployment: Ensure `FRONTEND_URL` and `BACKEND_URL` environment variables are set for OAuth callbacks and CORS.
-- Loom video: not included here — record a short demo showing: create gig, submit bids from different accounts, owner hiring a bid, and real-time notifications appearing for the hired freelancer.
-
-## Next suggested improvements
-- Add integration tests covering race conditions for the hire flow (concurrent hire attempts).
-- Add monitoring/alerts around publish/subscribe failures.
-
----
-For frontend-specific details and dev instructions see `frontend/README.md`.
