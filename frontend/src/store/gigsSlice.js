@@ -4,9 +4,8 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
 export const fetchGigs = createAsyncThunk(
   'gigs/fetchGigs',
-  async ({ search = '', page = 1, limit = 10, status = '' } = {}) => {
+  async ({ search = '', page = 1, limit = 10 } = {}) => {
     const params = new URLSearchParams({ search, page: String(page), limit: String(limit) });
-    if (status !== undefined) params.set('status', String(status));
     const res = await fetch(`${API_BASE_URL}/api/gigs?${params.toString()}`, { credentials: 'include' });
     if (!res.ok) {
       const data = await res.json().catch(() => null);
@@ -19,7 +18,6 @@ export const fetchGigs = createAsyncThunk(
   }
 );
 
-// formPayload: FormData, tempId optional
 export const createGig = createAsyncThunk(
   'gigs/createGig',
   async ({ formPayload, tempId } = {}) => {
@@ -37,7 +35,6 @@ export const createGig = createAsyncThunk(
     }
 
     const json = await res.json();
-    // include tempId so reducers can reconcile optimistic update
     return { ...json, __tempId: tempId };
   }
 );
@@ -55,7 +52,6 @@ const gigsSlice = createSlice({
   initialState,
   reducers: {
     addLocalGig(state, action) {
-      // Optimistic local gig; append at start
       state.items.unshift(action.payload);
     },
     replaceLocalGig(state, action) {
@@ -78,10 +74,8 @@ const gigsSlice = createSlice({
         state.loading = false;
         const fetched = action.payload.gigs || [];
 
-        // Preserve optimistic local items (tempId or __local) at the top
         const localOptimistic = (state.items || []).filter(i => i.__tempId || i.__local);
 
-        // Filter out any fetched items that duplicate local optimistic items
         const filteredFetched = fetched.filter(f => !localOptimistic.some(l => l._id === f._id || l.__tempId === f._id || l._id === l.__tempId));
 
         state.items = [...localOptimistic, ...filteredFetched];
@@ -110,7 +104,6 @@ const gigsSlice = createSlice({
           }
         }
 
-        // otherwise prepend
         state.items.unshift(serverGig);
       })
       .addCase(createGig.rejected, (state, action) => {

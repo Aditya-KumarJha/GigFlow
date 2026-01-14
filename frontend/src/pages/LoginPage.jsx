@@ -16,7 +16,6 @@ const LoginPage = () => {
   const [searchParams] = useSearchParams();
 
   useEffect(() => {
-    // If we land on /login?reset=1 ensure the login form is shown
     if (searchParams.get("reset")) {
       setForgotStep(false);
       setOtpStep(false);

@@ -5,6 +5,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { fetchBidsForGig, submitBid, hireBid } from "../store/bidsSlice";
 import api from "../utils/api";
 import { toast } from "react-toastify";
+import { initSocket } from "../utils/socket";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
@@ -38,14 +39,11 @@ const GigDetail = () => {
   const [userBid, setUserBid] = useState(null);
   const [selectedBidId, setSelectedBidId] = useState(null);
 
-  /* ---------- role detection ---------- */
-  // support both `user._id` and `user.id` from backend/frontend shapes
   const currentUserId = auth.user?._id || auth.user?.id || null;
   const isAuthenticated = !!currentUserId;
   const isOwner = isAuthenticated && String(gig?.ownerId?._id || gig?.ownerId) === String(currentUserId);
   const isFreelancer = isAuthenticated && !isOwner;
 
-  /* ---------- fetch gig ---------- */
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
@@ -58,20 +56,23 @@ const GigDetail = () => {
           setMainIndex(0);
         }
       })
-      .catch(() => !cancelled && setGig(null))
+      .catch((err) => {
+        if (!cancelled) {
+          setGig(null);
+          toast.error('Failed to load gig details');
+        }
+      })
       .finally(() => !cancelled && setLoading(false));
 
     return () => (cancelled = true);
   }, [id]);
 
-  /* ---------- fetch bids (owner only) ---------- */
   useEffect(() => {
     if (isOwner) {
       dispatch(fetchBidsForGig(id)).catch(() => {});
     }
   }, [dispatch, id, isOwner]);
 
-  /* ---------- fetch my bid (freelancer only) ---------- */
   useEffect(() => {
     if (!isFreelancer) return;
 
@@ -95,13 +96,92 @@ const GigDetail = () => {
     return () => (cancelled = true);
   }, [id, isFreelancer]);
 
+  useEffect(() => {
+    // Listen to socket events to update UI in real-time for this gig
+    const socket = initSocket();
+
+    const handleBidHired = (data) => {
+      try {
+        const gigId = data?.gig?.id || data?.gig?._id;
+        if (!gigId || String(gigId) !== String(id)) return;
+
+        // If current user is freelancer of this gig, update their bid state
+        if (isFreelancer) {
+          setUserBid((prev) => {
+            if (!prev) return prev;
+            const bidId = data?.bid?.id || data?.bid?._id;
+            // If prev has an _id, make sure it matches; otherwise if current user matches the freelancer in payload, update
+            const currentMatches = String(currentUserId) && String(data?.freelancer?.id || data?.freelancer?._id) && String(currentUserId) === String(data?.freelancer?.id || data?.freelancer?._id);
+            if (bidId && prev._id && String(prev._id) !== String(bidId) && !currentMatches) return prev;
+            return {
+              ...prev,
+              status: 'hired',
+              price: data?.bid?.price ?? prev.price,
+              message: data?.bid?.message ?? prev.message,
+            };
+          });
+        }
+
+        // Update gig assigned state for everyone viewing this gig
+        setGig((g) => ({
+          ...(g || {}),
+          status: 'assigned',
+          assignedFreelancer: isFreelancer ? (auth.user || data?.freelancer) : (data?.freelancer || g?.assignedFreelancer),
+        }));
+
+        // toast shown by global listener in App; avoid duplicate toasts here
+        // owner should refresh bids list to get latest statuses
+        if (isOwner) {
+          dispatch(fetchBidsForGig(id)).catch(() => {});
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    };
+
+    const handleBidRejected = (data) => {
+      try {
+        const gigId = data?.gig?.id || data?.gig?._id;
+        if (!gigId || String(gigId) !== String(id)) return;
+
+        if (isFreelancer) {
+          setUserBid((prev) => {
+            if (!prev) return prev;
+            const bidId = data?.bid?.id || data?.bid?._id;
+            const currentMatches = String(currentUserId) && String(data?.freelancer?.id || data?.freelancer?._id) && String(currentUserId) === String(data?.freelancer?.id || data?.freelancer?._id);
+            if (bidId && prev._id && String(prev._id) !== String(bidId) && !currentMatches) return prev;
+            return { ...prev, status: 'rejected' };
+          });
+        }
+
+        // If owner, refresh bids list
+        if (isOwner) {
+          dispatch(fetchBidsForGig(id)).catch(() => {});
+        }
+
+        // toast shown by global listener in App; avoid duplicate toasts here
+      } catch (e) {
+        console.error(e);
+      }
+    };
+
+    socket.on('bid_hired', handleBidHired);
+    socket.on('bid_rejected', handleBidRejected);
+
+    return () => {
+      try {
+        socket.off('bid_hired', handleBidHired);
+        socket.off('bid_rejected', handleBidRejected);
+      } catch (e) {}
+    };
+  }, [id, isFreelancer, isOwner, dispatch]);
+
   if (loading) return <div className="min-h-screen">Loading…</div>;
   if (!gig) return <div className="min-h-screen">Gig not found.</div>;
 
   const images = gig.images || [];
   const main = images[mainIndex] || images[0] || { url: "/placeholder.png" };
 
-  /* ---------- submit bid ---------- */
   const handleSubmitBid = async (e) => {
     e.preventDefault();
 
@@ -137,7 +217,6 @@ const GigDetail = () => {
     }
   };
 
-  /* ---------- hire ---------- */
   const handleHire = async (bidId) => {
     try {
       await dispatch(hireBid({ bidId, gigId: id })).unwrap();
@@ -153,7 +232,6 @@ const GigDetail = () => {
 
       <main className="max-w-6xl mx-auto pt-28 px-4">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* LEFT */}
           <div className="lg:col-span-2 bg-white rounded-2xl p-6 shadow-sm">
             <div className="h-96 bg-zinc-100 rounded-xl flex items-center justify-center overflow-hidden">
               <img
@@ -202,11 +280,9 @@ const GigDetail = () => {
             </div>
           </div>
 
-          {/* RIGHT */}
           <div className="bg-white rounded-2xl p-6 shadow-sm sticky top-28 h-fit">
             <h3 className="text-xl font-bold mb-4">Bids</h3>
 
-            {/* OWNER VIEW */}
             {isOwner && (
               <div className="space-y-3">
                 {bidsState.items.length === 0 ? (
@@ -265,8 +341,6 @@ const GigDetail = () => {
               </div>
             )}
 
-            {/* FREELANCER VIEW */}
-            {/* show bidding UI when gig is open OR show user's own bid even if rejected/hired */}
             {isFreelancer && (gig.status === "open" || userBid) && (
               <>
                 {userBid ? (

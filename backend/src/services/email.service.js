@@ -21,6 +21,17 @@ transporter.verify((error, success) => {
 
 export const sendEmail = async ({ to, subject, text, html }) => {
   try {
+    // Validate recipients before attempting to send. Nodemailer throws if no recipients are defined.
+    const noRecipients =
+      !to ||
+      (Array.isArray(to) && to.length === 0) ||
+      (typeof to === "string" && to.trim() === "");
+
+    if (noRecipients) {
+      console.warn("sendEmail: no recipients provided — skipping email (subject:", subject, ")");
+      return null;
+    }
+
     const info = await transporter.sendMail({
       from: `"GigFlow" <${process.env.EMAIL_USER}>`,
       to,

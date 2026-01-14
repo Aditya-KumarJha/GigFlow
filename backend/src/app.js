@@ -6,6 +6,7 @@ import rateLimit from 'express-rate-limit';
 import authRoutes from './routes/auth.routes.js';
 import gigRoutes from './routes/gig.routes.js';
 import bidRoutes from './routes/bid.routes.js';
+import notificationRoutes from './routes/notification.routes.js';
 
 const app = express();
 
@@ -44,15 +45,16 @@ const otpLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-app.use('/api/auth', authLimiter, authRoutes);
+app.use('/api/auth', authRoutes);
 app.use('/api/gigs', gigRoutes);
 app.use('/api/bids', bidRoutes);
+app.use('/api/notifications', notificationRoutes);
 
-app.use('/api/auth/resend-otp', otpLimiter);
-app.use('/api/auth/verify-register-otp', otpLimiter);
-app.use('/api/auth/verify-login-otp', otpLimiter);
-app.use('/api/auth/forgot-password', otpLimiter);
-app.use('/api/auth/verify-forgot-password-otp', otpLimiter);
+// app.use('/api/auth/resend-otp', otpLimiter);
+// app.use('/api/auth/verify-register-otp', otpLimiter);
+// app.use('/api/auth/verify-login-otp', otpLimiter);
+// app.use('/api/auth/forgot-password', otpLimiter);
+// app.use('/api/auth/verify-forgot-password-otp', otpLimiter);
 
 app.get('/', (req, res) => {
   res.status(200).json({ status: 'OK', message: 'GigFlow Backend is running' });

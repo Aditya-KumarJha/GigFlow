@@ -58,3 +58,22 @@ export const bidIdParamValidation = [
 
   checkValidation,
 ];
+
+export const updateBidValidations = [
+  body("message")
+    .optional()
+    .isString()
+    .withMessage("Message must be a string")
+    .trim()
+    .isLength({ min: 10, max: 1000 })
+    .withMessage("Message must be between 10 and 1000 characters"),
+
+  body("price")
+    .optional()
+    .isNumeric()
+    .withMessage("Price must be a number")
+    .custom((value) => value >= 0)
+    .withMessage("Price cannot be negative"),
+
+  checkValidation,
+];

@@ -1,7 +1,7 @@
 import React from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
-import { Pencil, IndianRupee } from "lucide-react";
+import { Pencil, IndianRupee, Trash2 } from "lucide-react";
 
 const truncate = (s, n = 120) =>
   s && s.length > n ? s.slice(0, n) + "..." : s || "";
@@ -17,7 +17,7 @@ const formatFullName = (fullName) => {
   return String(fullName);
 };
 
-const GigCard = ({ gig }) => {
+const GigCard = ({ gig, onDelete }) => {
   const navigate = useNavigate();
   const auth = useSelector((s) => s.auth);
   const isAuthenticated = auth?.isAuthenticated ?? false;
@@ -29,21 +29,30 @@ const GigCard = ({ gig }) => {
     gig.ownerId?.username || formatFullName(gig.ownerId?.fullName) || "Unknown";
 
   const assignedName = gig.assignedFreelancer
-    ? gig.assignedFreelancer.username || formatFullName(gig.assignedFreelancer.fullName)
+    ? gig.assignedFreelancer.username ||
+      formatFullName(gig.assignedFreelancer.fullName)
     : null;
 
   const handleEdit = (e) => {
-    e.stopPropagation();
     e.preventDefault();
+    e.stopPropagation();
     navigate(`/post-gig?id=${gig._id}`);
   };
 
-  const handlePlaceBid = (e) => {
-    e.stopPropagation();
+  const handleDelete = (e) => {
     e.preventDefault();
-    if (!isAuthenticated)
+    e.stopPropagation();
+    if (onDelete) {
+      onDelete(gig._id, gig.title);
+    }
+  };
+
+  const handlePlaceBid = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!isAuthenticated) {
       return navigate("/login", { state: { from: `/gigs/${gig._id}` } });
-    // Open gig detail page so user can place a bid there (no alert)
+    }
     navigate(`/gigs/${gig._id}`);
   };
 
@@ -77,53 +86,42 @@ const GigCard = ({ gig }) => {
         <div className="flex items-center justify-between text-xs text-zinc-500 pt-1">
           <div>
             <div>By {owner}</div>
-            {gig.status === 'assigned' && assignedName && (
-              <div className="text-xs text-zinc-500">Assigned to: {assignedName}</div>
+            {gig.status === "assigned" && assignedName && (
+              <div className="text-xs text-zinc-500">
+                Assigned to: {assignedName}
+              </div>
             )}
           </div>
           <span className="capitalize">{gig.status}</span>
         </div>
 
-        <div className="pt-4 flex items-center justify-between">
+        <div className="pt-4 flex items-center justify-between gap-2">
           {gig.status === "assigned" ? (
-            <div
-              className={`
-                px-4 py-2 text-sm font-medium
-                bg-zinc-100 text-zinc-700
-                rounded-xl
-                shadow-sm
-              `}
-            >
+            <div className="px-4 py-2 text-sm font-medium bg-zinc-100 text-zinc-700 rounded-xl shadow-sm">
               Assigned
             </div>
           ) : gig.editable ? (
-            <button
-              onClick={handleEdit}
-              className={`
-                flex items-center gap-2
-                px-4 py-2 text-sm font-medium
-                bg-orange-500 text-white
-                rounded-xl
-                hover:bg-orange-600
-                shadow-sm hover:shadow-md
-                transition-all active:scale-95
-              `}
-            >
-              <Pencil size={16} />
-              Edit Gig
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleEdit}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-orange-500 text-white rounded-xl hover:bg-orange-600 shadow-sm hover:shadow-md transition-all active:scale-95"
+              >
+                <Pencil size={16} />
+                Edit Gig
+              </button>
+
+              <button
+                onClick={handleDelete}
+                className="flex items-center gap-2 px-3 py-2 text-sm font-medium bg-red-500 text-white rounded-xl hover:bg-red-600 shadow-sm hover:shadow-md transition-all active:scale-95"
+              >
+                <Trash2 size={16} />
+                Delete
+              </button>
+            </div>
           ) : (
             <button
               onClick={handlePlaceBid}
-              className={`
-                flex items-center gap-2
-                px-4 py-2 text-sm font-medium
-                bg-emerald-500 text-white
-                rounded-xl
-                hover:bg-emerald-600
-                shadow-sm hover:shadow-md
-                transition-all active:scale-95
-              `}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 shadow-sm hover:shadow-md transition-all active:scale-95"
             >
               <IndianRupee size={16} />
               Place Bid

@@ -72,11 +72,10 @@ const PostGig = () => {
     }
 
     if (gigId) {
-      // update existing gig
       try {
         setUpdating(true);
         const res = await fetch(`${API_BASE_URL}/api/gigs/${gigId}`, {
-          method: "PUT",
+          method: "PATCH",
           credentials: "include",
           body: fd,
         });
@@ -86,8 +85,9 @@ const PostGig = () => {
           throw new Error(data?.message || "Failed to update gig");
         }
 
+        const data = await res.json();
         toast.success("Gig updated successfully");
-        navigate("/browse-gigs");
+        navigate("/my-gigs");
       } catch (err) {
         toast.error(err?.message || "Failed to update gig");
       } finally {
@@ -113,7 +113,7 @@ const PostGig = () => {
     try {
       await dispatch(createGig({ formPayload: fd, tempId })).unwrap();
       toast.success("Gig posted successfully");
-      navigate("/browse-gigs");
+      navigate("/my-gigs");
     } catch (err) {
       toast.error(err?.message || "Failed to create gig");
     }
@@ -148,7 +148,6 @@ const PostGig = () => {
       <Header />
 
       <main className="max-w-3xl mx-auto pt-28 px-4">
-        {/* Page Header */}
         <div className="mb-8">
           <h1 className="text-4xl font-extrabold tracking-tight">
             Post a <span className="text-[#FF4801]">Gig</span>
@@ -159,12 +158,10 @@ const PostGig = () => {
           </p>
         </div>
 
-        {/* Form Card */}
         <form
           onSubmit={onSubmit}
           className="bg-white rounded-2xl shadow-sm border border-zinc-100 p-8 space-y-6"
         >
-          {/* Title */}
           <div>
             <label className="block text-sm font-medium text-zinc-700">
               Gig Title
@@ -177,7 +174,6 @@ const PostGig = () => {
             />
           </div>
 
-          {/* Description */}
           <div>
             <label className="block text-sm font-medium text-zinc-700">
               Description
@@ -190,7 +186,6 @@ const PostGig = () => {
             />
           </div>
 
-          {/* Budget */}
           <div>
             <label className="block text-sm font-medium text-zinc-700">
               Budget
@@ -208,7 +203,6 @@ const PostGig = () => {
             </div>
           </div>
 
-          {/* Image Upload */}
           <div>
             <label className="block text-sm font-medium text-zinc-700">
               Reference Images <span className="text-zinc-400">(max 3)</span>
@@ -258,7 +252,6 @@ const PostGig = () => {
             )}
           </div>
 
-          {/* Actions */}
           <div className="flex items-center gap-4 pt-4">
             <button
               disabled={creating || updating}

@@ -1,11 +1,9 @@
 import React, { useEffect, useState, useRef } from "react";
 import Header from "../components/layout/Header";
 import { useDispatch, useSelector } from "react-redux";
-import { useNavigate } from "react-router-dom";
 import { fetchGigs } from "../store/gigsSlice";
 import GigCard from "../components/gig/GigCard";
-
-// GigCard extracted to components/gig/GigCard.jsx
+import { toast } from 'react-toastify';
 
 const BrowseGigs = () => {
   const dispatch = useDispatch();
@@ -13,6 +11,7 @@ const BrowseGigs = () => {
   const items = gigsState?.items || [];
   const loading = gigsState?.loading || false;
   const meta = gigsState?.meta || {};
+  const error = gigsState?.error;
 
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState("latest");
@@ -20,7 +19,12 @@ const BrowseGigs = () => {
   const debounce = useRef(null);
 
   useEffect(() => {
-    // request all statuses so assigned gigs are visible in the browse view
+    if (error) {
+      toast.error(error);
+    }
+  }, [error]);
+
+  useEffect(() => {
     dispatch(fetchGigs({ search: "", page: 1, limit: 9, status: 'all' }));
   }, [dispatch]);
 
@@ -48,7 +52,6 @@ const BrowseGigs = () => {
           (g.user && (g.user.username || g.user.name)) || ""
         ).toString().toLowerCase();
 
-        // match if search is substring of any of these fields
         return (
           title.includes(lowerSearch) ||
           description.includes(lowerSearch) ||
@@ -71,7 +74,6 @@ const BrowseGigs = () => {
       <Header />
 
       <main className="max-w-6xl mx-auto pt-28 px-4">
-        {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
           <div>
             <h2 className="text-3xl font-extrabold">
@@ -116,7 +118,6 @@ const BrowseGigs = () => {
           </div>
         </div>
 
-        {/* Grid */}
         {loading && (
           <div className="text-center py-16 text-zinc-500">
             Loading gigs…
@@ -137,7 +138,6 @@ const BrowseGigs = () => {
           </div>
         )}
 
-        {/* Pagination */}
         <div className="mt-10 flex items-center justify-between text-sm">
           <span className="text-zinc-600">
             {meta.total || 0} results

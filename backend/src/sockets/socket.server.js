@@ -54,3 +54,20 @@ export default initSocketServer;
 export function getIo() {
     return ioInstance;
 }
+
+export function emitToUser(userId, event, data) {
+    try {
+        const io = getIo();
+        if (!io) return false;
+        
+        const socketId = userSockets.get(userId.toString());
+        if (socketId) {
+            io.to(socketId).emit(event, data);
+            return true;
+        }
+        return false;
+    } catch (err) {
+        console.error('emitToUser error:', err);
+        return false;
+    }
+}

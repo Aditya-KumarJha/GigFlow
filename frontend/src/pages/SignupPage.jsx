@@ -11,13 +11,11 @@ const SignupPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // If navigated from home CTA with state.email, go straight to OTP view
   const fromEmailCta = location.state?.fromEmailCta && location.state?.email;
 
   if (fromEmailCta && !otpStep && userEmail !== location.state.email) {
     setUserEmail(location.state.email);
     setOtpStep(true);
-    // clear state so back button works cleanly
     navigate(location.pathname, { replace: true, state: {} });
   }
 

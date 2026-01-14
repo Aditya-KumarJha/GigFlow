@@ -428,5 +428,125 @@ export const startNotificationConsumers = async () => {
     }
   });
 
+  subscribeToQueue("BID_NOTIFICATION.UPDATED", async (data) => {
+    const freelancerName = getCustomerName(data.freelancer);
+    const gigTitle = data.gig?.title || "your gig";
+
+    // Email to freelancer confirming their update
+    const freelancerHtml = emailLayout({
+      title: "Your bid was updated ✏️",
+      body: `
+        <p>Hi <strong>${freelancerName}</strong>,</p>
+        <p>Your bid for <strong>"${gigTitle}"</strong> was updated successfully.</p>
+        <div style="background: #f8f9fa; padding: 12px; border-radius: 5px; margin: 12px 0;">
+          <p style="margin: 5px 0;"><strong>New Bid:</strong> ₹${data.bid?.price ?? "-"}</p>
+          <p style="margin: 5px 0;"><strong>Message:</strong></p>
+          <p style="margin: 5px 0; font-style: italic;">${data.bid?.message ?? "(no message)"}</p>
+        </div>
+        <p>You can view or manage your bids on GigFlow.</p>
+        ${footerSignature}
+      `,
+    });
+
+    try {
+      if (data.freelancer?.email) {
+        await sendEmail({
+          to: data.freelancer.email,
+          subject: `Your bid for "${gigTitle}" was updated – GigFlow`,
+          text: `Your bid was updated. New price: ₹${data.bid?.price ?? "-"}`,
+          html: freelancerHtml,
+        });
+      }
+    } catch (err) {
+      console.error('Failed to send bid updated email to freelancer:', err);
+    }
+
+    // Notify gig owner about the updated bid if owner info is present
+    if (data.gigOwner && data.gigOwner.email) {
+      const ownerName = getCustomerName(data.gigOwner);
+      const ownerHtml = emailLayout({
+        title: "A bid was updated on your gig 🔔",
+        body: `
+          <p>Hi <strong>${ownerName}</strong>,</p>
+          <p>A bid on your gig <strong>"${gigTitle}"</strong> was updated by <strong>${freelancerName}</strong>.</p>
+          <div style="background: #f8f9fa; padding: 12px; border-radius: 5px; margin: 12px 0;">
+            <p style="margin: 5px 0;"><strong>Updated Bid:</strong> ₹${data.bid?.price ?? "-"}</p>
+            <p style="margin: 5px 0;"><strong>Message:</strong></p>
+            <p style="margin: 5px 0; font-style: italic;">${data.bid?.message ?? "(no message)"}</p>
+          </div>
+          <p>Log in to GigFlow to review the updated bid.</p>
+          ${footerSignature}
+        `,
+      });
+
+      try {
+        await sendEmail({
+          to: data.gigOwner.email,
+          subject: `A bid on "${gigTitle}" was updated – GigFlow`,
+          text: `${freelancerName} updated their bid on "${gigTitle}".`,
+          html: ownerHtml,
+        });
+      } catch (err) {
+        console.error('Failed to send bid updated email to gig owner:', err);
+      }
+    }
+
+  });
+
+  subscribeToQueue("BID_NOTIFICATION.DELETED", async (data) => {
+    const freelancerName = getCustomerName(data.freelancer);
+    const gigTitle = data.gig?.title || "the gig";
+
+    // Confirmation to freelancer
+    const freelancerHtml = emailLayout({
+      title: "Your bid was withdrawn 🗑️",
+      body: `
+        <p>Hi <strong>${freelancerName}</strong>,</p>
+        <p>Your bid for <strong>"${gigTitle}"</strong> has been deleted successfully.</p>
+        <p>If this was a mistake, you may submit a new bid if the gig is still open.</p>
+        ${footerSignature}
+      `,
+    });
+
+    try {
+      if (data.freelancer?.email) {
+        await sendEmail({
+          to: data.freelancer.email,
+          subject: `Your bid on "${gigTitle}" was deleted – GigFlow`,
+          text: `Your bid on "${gigTitle}" was deleted.`,
+          html: freelancerHtml,
+        });
+      }
+    } catch (err) {
+      console.error('Failed to send bid deleted email to freelancer:', err);
+    }
+
+    // Notify gig owner about withdrawn bid if owner info present
+    if (data.gigOwner && data.gigOwner.email) {
+      const ownerName = getCustomerName(data.gigOwner);
+      const ownerHtml = emailLayout({
+        title: "A bid was withdrawn from your gig ⚠️",
+        body: `
+          <p>Hi <strong>${ownerName}</strong>,</p>
+          <p><strong>${freelancerName}</strong> has withdrawn their bid from your gig <strong>"${gigTitle}"</strong>.</p>
+          <p>Log in to GigFlow to see other bids or to reopen the gig for more applications.</p>
+          ${footerSignature}
+        `,
+      });
+
+      try {
+        await sendEmail({
+          to: data.gigOwner.email,
+          subject: `A bid was withdrawn from "${gigTitle}" – GigFlow`,
+          text: `${freelancerName} withdrew their bid from "${gigTitle}".`,
+          html: ownerHtml,
+        });
+      } catch (err) {
+        console.error('Failed to send bid deleted email to gig owner:', err);
+      }
+    }
+
+  });
+
   console.log("✅ All notification consumers started");
 };

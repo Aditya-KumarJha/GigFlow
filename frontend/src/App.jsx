@@ -6,6 +6,11 @@ import LoginPage from "./pages/LoginPage";
 import PostGig from './pages/PostGig';
 import BrowseGigs from './pages/BrowseGigs';
 import GigDetail from './pages/GigDetail';
+import UpdateProfile from './pages/UpdateProfile';
+import MyGigs from './pages/MyGigs';
+import MyBids from './pages/MyBids';
+import Dashboard from './pages/Dashboard';
+import Notifications from './pages/Notifications';
 import { useSelector, useDispatch } from 'react-redux'
 import { verifySession } from './store/authSlice'
 import { initSocket } from './utils/socket'
@@ -23,16 +28,15 @@ const App = () => {
     dispatch(verifySession());
   }, [dispatch]);
 
-  // initialize socket after session is checked — ensures cookies/token available
   useEffect(() => {
-    if (!auth.checked) return;
+    if (!auth.checked || !auth.isAuthenticated) return;
 
     const socket = initSocket();
 
     const onBidHired = (data) => {
       try {
         const msg = data?.message || 'You have been hired!';
-        toast.success(msg);
+        toast.success(msg, { autoClose: 5000 });
       } catch (e) {
         console.error(e);
       }
@@ -41,7 +45,7 @@ const App = () => {
     const onBidRejected = (data) => {
       try {
         const msg = data?.message || 'Your bid was not selected';
-        toast.info(msg);
+        toast.info(msg, { autoClose: 5000 });
       } catch (e) {
         console.error(e);
       }
@@ -50,7 +54,7 @@ const App = () => {
     const onNewBid = (data) => {
       try {
         const msg = data?.message || 'New bid received';
-        toast.info(msg);
+        toast.info(msg, { autoClose: 5000 });
       } catch (e) {
         console.error(e);
       }
@@ -71,7 +75,7 @@ const App = () => {
         socket.off('new_bid', onNewBid);
       } catch (e) {}
     };
-  }, [auth.checked]);
+  }, [auth.checked, auth.isAuthenticated]);
 
   useEffect(() => {
     if (!auth.checked) return;
@@ -100,7 +104,7 @@ const App = () => {
     }
     prevAuthRef.current = auth.isAuthenticated;
 
-    const protectedPaths = ['/browse-gigs', '/post-gig', '/update-profile', '/my-gigs', '/my-bids', '/dashboard'];
+    const protectedPaths = ['/browse-gigs', '/gigs/new', '/post-gig', '/update-profile', '/my-gigs', '/my-bids', '/dashboard', '/notifications'];
     const current = location.pathname;
     const needsProtection = protectedPaths.some(p => current === p || current.startsWith(p + '/'));
     if (needsProtection && !auth.isAuthenticated) {
@@ -114,7 +118,13 @@ const App = () => {
         <Route path="/" element={<HomePage />} />
         <Route path="/browse-gigs" element={<BrowseGigs />} />
         <Route path="/gigs/:id" element={<GigDetail />} />
+        <Route path="/gigs/new" element={<PostGig />} />
         <Route path="/post-gig" element={<PostGig />} />
+        <Route path="/update-profile" element={<UpdateProfile />} />
+        <Route path="/my-gigs" element={<MyGigs />} />
+        <Route path="/my-bids" element={<MyBids />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/notifications" element={<Notifications />} />
         <Route path="/signup" element={<SignupPage />} />
         <Route path="/login" element={<LoginPage />} />
       </Routes>

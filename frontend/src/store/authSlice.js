@@ -11,12 +11,11 @@ const checkCookie = () => {
 
 const initialState = {
   isAuthenticated: Boolean(localStorage.getItem('authToken')) || checkCookie(),
-  checked: false, // becomes true after verifySession finishes (success or failure)
+  checked: false, 
   user: null,
 };
 
 export const verifySession = createAsyncThunk('auth/verifySession', async () => {
-  // Calls backend endpoint which reads HttpOnly cookies and returns current user/session
   const res = await api.get('/api/auth/me');
   return res.data;
 });
@@ -47,7 +46,6 @@ const authSlice = createSlice({
       .addCase(verifySession.fulfilled, (state, action) => {
         state.isAuthenticated = true;
         state.checked = true;
-        // backend returns { user }
         state.user = action.payload?.user || action.payload || null;
       })
       .addCase(verifySession.rejected, (state, action) => {

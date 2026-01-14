@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import Button from "../ui/Button";
 import api from "../../utils/api";
@@ -18,6 +18,23 @@ const Header = () => {
   }, []);
 
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const closeTimer = useRef(null);
+
+  const openDropdown = () => {
+    if (closeTimer.current) {
+      clearTimeout(closeTimer.current);
+      closeTimer.current = null;
+    }
+    setDropdownOpen(true);
+  };
+
+  const scheduleCloseDropdown = (delay = 180) => {
+    if (closeTimer.current) clearTimeout(closeTimer.current);
+    closeTimer.current = setTimeout(() => {
+      setDropdownOpen(false);
+      closeTimer.current = null;
+    }, delay);
+  };
   const dispatch = useDispatch();
   const auth = useSelector(state => state.auth);
 
@@ -29,7 +46,6 @@ const Header = () => {
     try {
       await api.post('/api/auth/logout');
     } catch (e) {
-      // ignore errors, proceed to clear client state
     }
     dispatch(setLoggedOut());
     toast.success('Logout successful');
@@ -62,7 +78,7 @@ const Header = () => {
           <a
             href="/browse-gigs"
             className={`tracking-wide text-zinc-600 hover:text-black transition-all duration-300 font-medium ${
-              isScrolled ? "text-[15px]" : "text-[17.3px]"
+              isScrolled ? "text-[15px]" : "text-[21.3px]"
             }`}
           >
             Browse Gigs
@@ -71,7 +87,7 @@ const Header = () => {
           <a
             href="/post-gig"
             className={`tracking-wide text-zinc-600 hover:text-black transition-all duration-300 font-medium ${
-              isScrolled ? "text-[15px]" : "text-[17.3px]"
+              isScrolled ? "text-[15px]" : "text-[21.3px]"
             }`}
           >
             Post a Gig
@@ -80,28 +96,33 @@ const Header = () => {
           {/* DASHBOARD */}
             <div
               className="relative"
-              onMouseEnter={() => setDropdownOpen(true)}
-              onMouseLeave={() => setDropdownOpen(false)}
-              onFocus={() => setDropdownOpen(true)}
-              onBlur={() => setDropdownOpen(false)}
+              onMouseEnter={openDropdown}
+              onMouseLeave={() => scheduleCloseDropdown()}
             >
               <span
                 className={`tracking-wide text-zinc-600 hover:text-black transition-all duration-300 font-medium cursor-pointer ${
-                  isScrolled ? "text-[15px]" : "text-[17.3px]"
+                  isScrolled ? "text-[15px]" : "text-[21.3px]"
                 }`}
               >
                 Dashboard
               </span>
 
-              <div className={`absolute left-1/2 -translate-x-1/2 mt-2 w-44 bg-white rounded-xl shadow-lg border border-zinc-100 z-50 ${dropdownOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'} transition-opacity duration-150`}> 
+              <div
+                className={`absolute left-1/2 -translate-x-1/2 mt-2 w-44 bg-white rounded-xl shadow-lg border border-zinc-100 z-50 ${dropdownOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'} transition-opacity duration-150`}
+                onMouseEnter={openDropdown}
+                onMouseLeave={() => scheduleCloseDropdown()}
+              >
                 <a href="/update-profile" className="block px-5 py-3 text-zinc-700 hover:bg-zinc-50 rounded-t-xl">
                   Update Profile
                 </a>
                 <a href="/my-gigs" className="block px-5 py-3 text-zinc-700 hover:bg-zinc-50">
                   My Gigs
                 </a>
-                <a href="/my-bids" className="block px-5 py-3 text-zinc-700 hover:bg-zinc-50 rounded-b-xl">
+                <a href="/my-bids" className="block px-5 py-3 text-zinc-700 hover:bg-zinc-50">
                   My Bids
+                </a>
+                <a href="/notifications" className="block px-5 py-3 text-zinc-700 hover:bg-zinc-50 rounded-b-xl">
+                  Notifications
                 </a>
               </div>
             </div>
@@ -183,9 +204,12 @@ const Header = () => {
           <a href="/my-bids" className="block px-6 py-4 text-zinc-700 hover:bg-zinc-50">
             My Bids
           </a>
+          <a href="/notifications" className="block px-6 py-4 text-zinc-700 hover:bg-zinc-50">
+            Notifications
+          </a>
 
           <div className="border-t border-zinc-100">
-            <button
+              <button
               type="button"
               onClick={() => {
                 setMobileMenuOpen(false);
@@ -197,7 +221,7 @@ const Header = () => {
               }}
               className="w-full text-left px-6 py-4 font-medium text-black hover:bg-zinc-50"
             >
-              {isAuthenticated ? 'Logout' : 'Get Started'}
+              {auth.isAuthenticated ? 'Logout' : 'Get Started'}
             </button>
           </div>
         </div>

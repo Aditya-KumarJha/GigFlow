@@ -1,7 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../utils/api';
 
-// State shape described by the user
 const initialState = {
   byGigId: {},
   hiring: false,
@@ -81,7 +80,6 @@ const bidsSlice = createSlice({
         const { gigId, bid } = action.payload;
         state.byGigId[gigId] = state.byGigId[gigId] || { items: [], loading: false, error: null };
         state.byGigId[gigId].loading = false;
-        // append
         state.byGigId[gigId].items.push(bid);
       })
       .addCase(submitBid.rejected, (state, action) => {
@@ -101,7 +99,6 @@ const bidsSlice = createSlice({
         const gid = gigId || (bid && bid.gigId && (bid.gigId._id || bid.gigId));
         if (!gid) return;
         state.byGigId[gid] = state.byGigId[gid] || { items: [], loading: false, error: null };
-        // mark hired and reject others
         state.byGigId[gid].items = (state.byGigId[gid].items || []).map((b) => {
           if (!b) return b;
           if (String(b._id) === String(bid._id) || String(b._id) === String(bid.id)) {
@@ -112,7 +109,6 @@ const bidsSlice = createSlice({
       })
       .addCase(hireBid.rejected, (state, action) => {
         state.hiring = false;
-        // optional: set global error; for now attach to gig if provided
         const gid = action.meta.arg?.gigId;
         if (gid) {
           state.byGigId[gid] = state.byGigId[gid] || { items: [], loading: false, error: null };
